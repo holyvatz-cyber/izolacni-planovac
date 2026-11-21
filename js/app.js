@@ -271,6 +271,7 @@
         ${layers}
         ${ubarHtml(res)}
         <div class="lines">Potřeba vč. prořezu: ${lines}</div>
+        ${res.layers.some((l) => !C.PRODUCTS[l.product].verified) ? '<div class="warning">Dostupnost tohoto produktu a obsah balení na českém trhu ověřte u prodejce.</div>' : ''}
         ${res.warnings.map((w) => `<div class="warning">${esc(w)}</div>`).join('')}
         ${res.notes.length ? `<ul class="notes">${res.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       </div></article>`;
@@ -403,7 +404,6 @@
   $('#app-name').textContent = C.BRAND.appName;
   $('#app-company').textContent = C.BRAND.company;
   $('#btn-contact').href = C.BRAND.contactUrl;
-  $('#demo-banner').hidden = C.DATA_VERIFIED;
   renderTypeGrid();
   go(state.step || 1);
 })();

@@ -246,6 +246,7 @@
     const res = { U: null, ok: true, layers: [], qtyLayers: [], notes: [], warnings: [] };
     res.layers.push({ name: `Do profilů CW ${profile}`, product: pid, parts: fill.parts, total: fill.total, f: 0 });
     res.qtyLayers.push({ product: pid, t: fill.total, factor: 1 });
+    if (fill.total < profile) res.notes.push(`Akustik Board se v tloušťce ${profile} mm nevyrábí – použijte ${fill.total} mm, zbytek dutiny zůstane jako vzduchová mezera.`);
     res.notes.push('Pro nejlepší zvukovou izolaci vyplňte celou dutinu příčky a použijte dvojité opláštění sádrokartonem.');
     res.notes.push('Obvodové profily podlepte pružnou těsnicí páskou – omezíte přenos zvuku konstrukcí.');
     return res;

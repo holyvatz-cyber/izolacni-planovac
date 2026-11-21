@@ -14,8 +14,22 @@ Stačí otevřít `index.html` v prohlížeči. Aplikace nemá build krok ani z�
 - **Nákupní seznam:** izolace a parotěsné příslušenství, s prořezem a zaokrouhlením na celá balení. Jde zkopírovat nebo vytisknout do PDF.
 - **Ukládání:** projekt se ukládá v prohlížeči. Aplikace funguje i na mobilu a podporuje tmavý režim.
 
-## ⚠️ Před ostrým nasazením
-Hodnoty v souboru `js/catalog.js` jsou **orientační**: λD, dostupné tloušťky a hlavně obsah balení (`packM2`). Nahraďte je daty z aktuálních technických listů a ceníku. Pak nastavte `DATA_VERIFIED = true`, tím zmizí žlutý pruh s upozorněním. Ve stejném souboru se nastavuje také `BRAND.contactUrl`, tedy odkaz tlačítka „Poptat u prodejce“.
+## Produktová data
+`js/catalog.js` obsahuje λD a obsahy balení podle oficiálních produktových stránek knauf.com a listingů DEK (stav 11/2026). U každého produktu je uveden zdroj (`source`).
+
+| Produkt | λD | Tloušťky (mm) | Ověřeno pro CZ |
+|---|---|---|---|
+| Unifit 032 | 0,032 | 60–200 | ano |
+| Unifit 035 | 0,035 | 50–240 | ano |
+| NatuRoll Pro | 0,039 | 50–200 | ano |
+| FKD-S Thermal (1200 × 400) | 0,035 | 50–200 | ano |
+| Akustik Board (1250 × 625) | 0,037 | 50, 60, 100 | ano |
+| NaturBoard VENTI | 0,035 | 50, 100 | **ne** – jen mezinárodní technický list |
+| Homeseal LDS 100 / Soliplan / Solimur | – | role 100 m² / 40 m / 8–12 m | ano |
+
+Produkty s `verified: false` dostanou ve výsledku upozornění, ať zákazník dostupnost ověří u prodejce. Data pravidelně porovnávejte s aktuálními technickými listy. Na trhu se objevují i jiné formáty balení, například FKD-S Thermal ve formátu 1000 × 600 mm u některých prodejců.
+
+V `BRAND.contactUrl` nastavte odkaz pro tlačítko „Poptat u prodejce“.
 
 ## Struktura
 - `js/catalog.js` – produkty, normové hodnoty a typy konstrukcí (jediné místo pro správu dat)
