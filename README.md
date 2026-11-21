@@ -48,6 +48,7 @@ V `BRAND.contactUrl` nastavte odkaz pro tlačítko „Poptat u prodejce“.
 - **Kontrola zadání:** u neobvyklých hodnot (např. krokev 1600 mm) se zobrazí upozornění.
 - **Porovnání variant:** nejtenčí, vyvážená a nejlevnější varianta s cenou, přepínání jedním klepnutím.
 - **Odhad roční úspory:** u fasád a stropů pod půdou, podle ceny tepla nastavitelné v pokročilém nastavení.
+- **Export do PDF:** tlačítko „Stáhnout PDF“ vytvoří nákupní seznam s logem, písmem Knauf Screen, položkami, množstvím, cenami, skladbami konstrukcí a odhadem dotace. Knihovny jsPDF a jsPDF-AutoTable (licence MIT, složka `vendor/`) se načtou až při prvním exportu.
 - **Sdílení:** projekt jde poslat odkazem (data jsou zakódovaná v adrese, nic se neukládá na server), vytisknout do PDF s logem nebo zkopírovat jako text.
 
 ## Dotace, prodejci, měření a offline režim

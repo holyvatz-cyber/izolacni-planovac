@@ -352,3 +352,9 @@ tr.group td { background: var(--bg); font-weight: 700; font-size: .78rem; color:
 .install-dialog li svg { vertical-align: -3px; color: var(--ki-cyan); }
 .install-dialog form { display: flex; justify-content: flex-end; margin-top: .8rem; }
 @media (max-width: 420px) { #btn-install span { display: none; } #btn-install { padding: .4rem .6rem; } }
+
+/* Export PDF */
+.cta-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.btn.pdf-btn { background: #fff; color: var(--ki-blue-acc); text-transform: uppercase; letter-spacing: .03em; font-family: var(--narrow); font-weight: 700; font-size: 1.2rem; }
+.btn.pdf-btn:hover { background: var(--ki-cyan-20); }
+.btn[data-pdf][aria-busy="true"] { opacity: .7; cursor: progress; }

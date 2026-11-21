@@ -1,10 +1,11 @@
 /* Service worker – umožní používat plánovač i bez připojení (např. na stavbě).
  * Při změně souborů zvyšte VERSION, aby si prohlížeče stáhly novou verzi. */
-const VERSION = 'planovac-v4';
+const VERSION = 'planovac-v5';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/app.css', 'css/fonts.css',
-  'js/catalog.js', 'js/calc.js', 'js/dealers.js', 'js/analytics.js', 'js/app.js',
+  'js/catalog.js', 'js/calc.js', 'js/dealers.js', 'js/analytics.js', 'js/app.js', 'js/pdf-export.js',
+  'vendor/jspdf.umd.min.js', 'vendor/jspdf.plugin.autotable.min.js', 'vendor/pdf-assets.js',
   'assets/knauf-insulation-logo.png', 'assets/build-on-us.png', 'assets/icon-192.png', 'assets/icon-512.png',
   'assets/fonts/KnaufScreen-Regular.woff2', 'assets/fonts/KnaufScreen-Bold.woff2', 'assets/fonts/KnaufScreen-BoldItalic.woff2',
   'assets/fonts/KnaufScreenHead-Bold.woff2', 'assets/fonts/KnaufScreenNarrow-Bold.woff2',

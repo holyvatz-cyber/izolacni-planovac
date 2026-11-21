@@ -536,6 +536,78 @@
     return out.join('\n');
   }
 
+  /* ---------- export PDF ---------- */
+  const loadScript = (src) => new Promise((ok, fail) => {
+    if (document.querySelector(`script[data-src="${src}"]`)) return ok();
+    const sc = document.createElement('script'); sc.src = src; sc.dataset.src = src;
+    sc.onload = ok; sc.onerror = () => fail(new Error(src)); document.head.appendChild(sc);
+  });
+  async function ensurePdfLibs() {
+    if (!window.jspdf) await loadScript('vendor/jspdf.umd.min.js');
+    if (!(window.jspdf && window.jspdf.jsPDF.API.autoTable)) await loadScript('vendor/jspdf.plugin.autotable.min.js');
+    if (!window.KI_PDF_ASSETS) await loadScript('vendor/pdf-assets.js');
+    if (!window.PlannerPDF) await loadScript('js/pdf-export.js');
+  }
+  const slug = (t) => String(t || 'projekt').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'projekt';
+
+  function buildPdfData() {
+    const results = state.items.map((i) => K.recommend(i, ctx())).filter(Boolean);
+    const agg = K.aggregate(results);
+    const kwh = results.reduce((s2, r) => s2 + (r.kwh || 0), 0);
+    const sub = K.subsidy(results); const S = C.SUBSIDY;
+    const vatPct = Math.round(C.VAT * 100);
+    return {
+      projectName: state.project.name || 'Plánovač zateplení',
+      date: new Date().toLocaleDateString('cs-CZ'),
+      levelLabel: C.LEVELS[state.project.level].label,
+      prioLabel: C.PRIORITIES[state.project.priority].label,
+      priceList: C.PRICE_LIST,
+      insulation: agg.insulation.map((l) => {
+        const p = C.PRODUCTS[l.product];
+        return { name: p.name, desc: p.desc, t: l.t, m2: fmt(l.m2), perPack: fmt(l.perPack, 2), unit: p.packUnit, packs: l.packs, packsWord: unitWord(p.packUnit, l.packs), price: l.noPrice ? 'na dotaz' : kc(l.price) };
+      }),
+      accessories: agg.accessories.map((a) => {
+        const d = C.ACCESSORIES[a.id];
+        return { name: d.name, desc: d.desc, need: `${fmt(a.need, 0)} ${d.perLabel}`, perPack: `${d.perUnit} ${d.perLabel}/${d.unit}`, qty: a.qty, qtyWord: unitWord(d.unit, a.qty), price: kc(a.price) };
+      }),
+      totals: {
+        area: `${fmt(agg.totalArea, 0)} m²`, packs: agg.totalPacks, vatPct,
+        price: kc(agg.price), vat: kc(agg.price * C.VAT), priceVat: kc(agg.price * (1 + C.VAT)),
+        saving: kwh > 0 ? `≈ ${kc(kwh * energyPrice())}` : '', noPrice: agg.noPrice,
+      },
+      constructions: results.map((r) => ({
+        name: r.item.name || r.typeInfo.label, type: r.typeInfo.label, area: `${fmt(r.area)} m²`,
+        layers: r.layers.map((l) => `${C.PRODUCTS[l.product].name} ${l.parts.join(' + ')} mm – ${l.name.toLowerCase()}`).join('\n'),
+        U: r.U != null ? fmtU(r.U) : '', target: r.target != null ? fmtU(r.target) : '', ok: r.ok,
+      })),
+      subsidy: Object.values(sub.areas).some((a) => a > 0) ? {
+        light: `${S.light.label}: ${sub.light ? `až ${kc(sub.light)}` : 'pod minimální výší podpory'}`,
+        loan: `${S.loan.label}: až ${kc(sub.loan)}`,
+        note: `Pro rodinné domy dokončené před ${S.builtBefore}. Podmínkou je odborný posudek a splnění technických požadavků výzvy – aktuální podmínky ověřte na novazelenausporam.cz.`,
+      } : null,
+      disclaimer: 'Výpočet je orientační (princip ČSN EN ISO 6946, normové hodnoty ČSN 73 0540-2) a nenahrazuje projektovou dokumentaci. Skutečná spotřeba se může lišit podle tvaru konstrukce a způsobu pokládky. Montáž provádějte podle technických listů a montážních návodů Knauf Insulation.',
+    };
+  }
+
+  async function exportPdf(btn) {
+    if (!state.items.length) { toast('Nejprve přidejte alespoň jednu konstrukci.'); return; }
+    const buttons = document.querySelectorAll('[data-pdf]');
+    buttons.forEach((b) => b.setAttribute('aria-busy', 'true'));
+    try {
+      await ensurePdfLibs();
+      const data = buildPdfData();
+      const doc = window.PlannerPDF.build(data);
+      const name = `nakupni-seznam-${slug(state.project.name)}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      doc.save(name);
+      toast('PDF se stahuje.');
+      track('pdf_export', { items: state.items.length });
+    } catch (e) {
+      toast('PDF se nepodařilo vytvořit. Zkuste Tisk → Uložit jako PDF.');
+    } finally {
+      buttons.forEach((b) => b.removeAttribute('aria-busy'));
+    }
+  }
+
   /* ---------- prodejci ---------- */
   const DEALERS = window.Dealers || [];
   function renderDealers(query) {
@@ -590,6 +662,8 @@
 
   /* ---------- události ---------- */
   document.addEventListener('click', (e) => {
+    const pdfBtn = e.target.closest('[data-pdf]');
+    if (pdfBtn) { exportPdf(pdfBtn); return; }
     const hb = e.target.closest('[data-help]');
     if (hb) {
       e.preventDefault();
