@@ -38,7 +38,7 @@ Ceny v aplikaci jsou orientační podle ceníku. Zákazník vidí cenu bez DPH i
 V `BRAND.contactUrl` nastavte odkaz pro tlačítko „Poptat u prodejce“.
 
 ## Vizuální identita
-- **Logo:** `assets/knauf-insulation-logo.png`.
+- **Logo a claim:** `assets/knauf-insulation-logo.png` a „Build on us.“ (`assets/build-on-us.png`) v úvodu, v patičce a v tiskové hlavičce.
 - **Písma:** firemní písma Knauf Screen, Knauf Screen Head a Knauf Screen Narrow (`assets/fonts`, WOFF2). Jsou chráněná autorským právem Knauf, takže repozitář ani web s nimi nezveřejňujte mimo rámec licence Knauf.
 - **Barvy:** oficiální paleta KNAUF Final Colors. Hlavní barvy jsou Cyan `#0099DE` a Accessible Blue `#003778` (text a tlačítka, kvůli kontrastu). Sekundární barvy (zelená, oranžová) slouží jen jako akcent, převažuje bílá.
 
