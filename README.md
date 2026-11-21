@@ -6,7 +6,7 @@ Webová aplikace pro koncové zákazníky. Zákazník zadá konstrukce a rozměr
 Stačí otevřít `index.html` v prohlížeči. Aplikace nemá build krok ani závislosti a dá se nasadit na libovolný statický hosting (třeba GitHub Pages).
 
 ## Co umí
-- **8 typů konstrukcí:** šikmá střecha (mezi a pod krokve), strop pod půdou (pochozí i nepochozí), kontaktní fasáda ETICS, provětrávaná fasáda, stěna dřevostavby, plochá střecha, plovoucí podlaha (kročejová izolace) a akustická příčka.
+- **10 typů konstrukcí:** šikmá střecha mezi a pod krokvemi, šikmá střecha nad krokvemi (přiznaný krov nebo rekonstrukce shora), strop pod půdou (pochozí i nepochozí), strop nad sklepem nebo garáží (Tektalan A2-SmartTec, Heratekta), kontaktní fasáda ETICS, provětrávaná fasáda, stěna dřevostavby, plochá střecha, plovoucí podlaha (kročejová izolace) a akustická příčka.
 - **3 úrovně cíle** podle ČSN 73 0540-2: požadovaná, doporučená a pasivní.
 - **3 priority:** nejtenčí vrstva, vyvážené řešení, nejnižší cena.
 - **Výpočet U** podle principu ČSN EN ISO 6946, u dřevěných prvků (krokve, sloupky) jako průměr horní a dolní meze.
@@ -49,6 +49,13 @@ V `BRAND.contactUrl` nastavte odkaz pro tlačítko „Poptat u prodejce“.
 - **Porovnání variant:** nejtenčí, vyvážená a nejlevnější varianta s cenou, přepínání jedním klepnutím.
 - **Odhad roční úspory:** u fasád a stropů pod půdou, podle ceny tepla nastavitelné v pokročilém nastavení.
 - **Sdílení:** projekt jde poslat odkazem (data jsou zakódovaná v adrese, nic se neukládá na server), vytisknout do PDF s logem nebo zkopírovat jako text.
+
+## Dotace, prodejci, měření a offline režim
+- **Dotace NZÚ:** `SUBSIDY` v `js/catalog.js` obsahuje orientační sazby NZÚ Light a NZÚ 2026+ (stav 06/2026). Výzvy se mění, proto sazby a technické podmínky před nasazením a pak pravidelně ověřujte na novazelenausporam.cz.
+- **Prodejci:** sekce „Kde koupit“ se zobrazí, jakmile do `js/dealers.js` doplníte seznam prodejců (formát je popsaný v souboru). Do té doby tlačítko vede na `BRAND.contactUrl`.
+- **Měření návštěvnosti:** události se zapisují do `window.dataLayer`. Měřicí skript Google Tag Manageru se načte až po vyplnění `BRAND.gtmId` a po souhlasu návštěvníka. Seznam událostí je v `js/analytics.js`.
+- **Instalace do mobilu a offline režim (PWA):** `manifest.webmanifest` a `sw.js`. Funguje jen na serveru přes HTTPS. Po každé změně souborů zvyšte `VERSION` v `sw.js`.
+- **Heraklith a Tektalan** nejsou ve stavebním ceníku, proto se u nich ukazuje „cena na dotaz“ a do součtu se nezapočítávají. Ceny můžete doplnit v `js/catalog.js`.
 
 ## Struktura
 - `js/catalog.js` – produkty, normové hodnoty a typy konstrukcí (jediné místo pro správu dat)

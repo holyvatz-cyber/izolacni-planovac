@@ -13,6 +13,7 @@
   const FORMS = { role: ['role', 'role', 'rolí'], 'balík': ['balík', 'balíky', 'balíků'], deska: ['deska', 'desky', 'desek'], 'kartuše': ['kartuše', 'kartuše', 'kartuší'] };
   const unitWord = (u, n) => { const f = FORMS[u]; if (!f) return u; return n === 1 ? f[0] : n >= 2 && n <= 4 ? f[1] : f[2]; };
   const kc = (n) => `${Math.round(n).toLocaleString('cs-CZ')} Kč`;
+  const track = (name, params) => { try { if (window.track) window.track(name, params); } catch (e) { /* ignore */ } };
   const uid = () => Math.random().toString(36).slice(2, 9);
 
   const ICONS = {
@@ -23,6 +24,8 @@
     frame: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h28v28H6z"/><path d="M15 6v28M25 6v28"/><path d="M8 10h5M8 16h5M8 22h5M8 28h5M17 10h6M17 16h6M17 22h6M17 28h6M27 10h5M27 16h5M27 22h5M27 28h5" stroke="var(--accent)"/></svg>',
     flat: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 14h30"/><rect x="5" y="16" width="30" height="5" stroke="var(--accent)"/><rect x="5" y="21" width="30" height="5" stroke="var(--accent)"/><path d="M5 28h30M8 28v8M32 28v8"/></svg>',
     floor: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 30h30"/><rect x="5" y="24" width="30" height="3" stroke="var(--accent)"/><rect x="5" y="17" width="30" height="6"/><path d="M6 17v-9M34 17v-9"/><path d="M14 12l2 3M22 12l2 3" stroke="var(--accent)"/></svg>',
+    over: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 24 20 9l16 15"/><path d="M8 18 20 7l12 11" stroke="var(--accent)" stroke-width="4"/><path d="M8 22v12h24V22"/></svg>',
+    cellar: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h32"/><rect x="4" y="16" width="32" height="4" stroke="var(--accent)"/><path d="M7 20v14M33 20v14M4 34h32"/><path d="M14 27h12" stroke-dasharray="2 2"/></svg>',
     partition: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v30M28 5v30"/><path d="M15 9c3 2 7-2 10 0M15 15c3 2 7-2 10 0M15 21c3 2 7-2 10 0M15 27c3 2 7-2 10 0" stroke="var(--accent)"/></svg>',
   };
 
@@ -34,6 +37,8 @@
     venti: { name: 'Provětrávaná fasáda', mode: 'rozmery', perimeter: '40', height: '6', openings: '30', area: '200', wall: 'cp450' },
     drevostavba: { name: 'Obvodová stěna', mode: 'rozmery', len: '36', height: '2.7', openings: '22', area: '75', frameDepth: '160', frameWidth: '60', frameSpacing: '625', maxExtra: '60' },
     plocha: { name: 'Plochá střecha', mode: 'rozmery', len: '12', wid: '10', area: '120', deck: 'zb', use: 'nepochozi', fixing: 'kotvena' },
+    nadkrokve: { name: 'Střecha nad krokvemi', mode: 'plocha', area: '100', rafterLen: '6', roofLen: '10', sides: '2', variant: 'shora', frameDepth: '140', frameWidth: '80', frameSpacing: '900', maxOver: '260' },
+    sklep: { name: 'Strop nad sklepem', mode: 'rozmery', len: '10', wid: '8', area: '80', ceiling: 'beton', fire: 'ano' },
     podlaha: { name: 'Podlaha – obývák', mode: 'rozmery', len: '6', wid: '4.5', area: '27', floorType: 'beton', load: '200', slab: '200' },
     pricka: { name: 'Příčka', mode: 'rozmery', len: '4', height: '2.6', doors: '1', area: '10', profile: '75' },
   };
@@ -103,7 +108,42 @@
     { k: 'load', label: 'Užitné zatížení', type: 'select', options: optionsFrom(C.FLOOR_LOADS) },
     { k: 'slab', label: 'Tloušťka ŽB stropu', unit: 'mm', hint: 'Pro odhad kročejového hluku; ponechte prázdné, pokud nevíte.' },
   ];
+  FIELDS.nadkrokve = [
+    { k: 'variant', label: 'Typ řešení', type: 'select', options: [['shora', 'Rekonstrukce shora – zachovat podhled, vyplnit i krokve'], ['prizn', 'Přiznaný krov – izolace jen nad krokvemi']], wide: true },
+    { k: 'rafterLen', label: 'Délka krokve', unit: 'm', mode: 'rozmery' },
+    { k: 'roofLen', label: 'Délka střechy', unit: 'm', mode: 'rozmery' },
+    { k: 'sides', label: 'Počet střešních rovin', type: 'select', options: [['1', '1 – pultová'], ['2', '2 – sedlová'], ['4', '4 – valbová (orientačně)']], mode: 'rozmery' },
+    { k: 'area', label: 'Plocha střechy', unit: 'm²', mode: 'plocha' },
+    { k: 'maxOver', label: 'Max. tloušťka nad krokvemi', unit: 'mm', hint: 'Omezuje ji výška okapu a napojení na štíty.' },
+    { sub: 'Krokve', show: (it) => it.variant === 'shora' },
+    { k: 'frameDepth', label: 'Výška krokve', unit: 'mm', show: (it) => it.variant === 'shora' },
+    { k: 'frameWidth', label: 'Šířka krokve', unit: 'mm', show: (it) => it.variant === 'shora' },
+    { k: 'frameSpacing', label: 'Rozteč krokví', unit: 'mm', show: (it) => it.variant === 'shora' },
+  ];
+  FIELDS.sklep = [
+    { k: 'len', label: 'Délka stropu', unit: 'm', mode: 'rozmery' },
+    { k: 'wid', label: 'Šířka stropu', unit: 'm', mode: 'rozmery' },
+    { k: 'area', label: 'Plocha stropu', unit: 'm²', mode: 'plocha' },
+    { k: 'ceiling', label: 'Stávající strop', type: 'select', options: optionsFrom(C.EXISTING_CEILINGS), wide: true },
+    { k: 'fire', label: 'Požadavek na nehořlavost', type: 'select', options: [['ano', 'Ano – garáž, kotelna, úniková cesta'], ['ne', 'Ne – běžný sklep']], wide: true },
+  ];
   FIELDS.venti = FIELDS.etics;
+
+  /* Nápověda s ilustracemi u vybraných polí */
+  const SVG_RAFTERS = '<svg viewBox="0 0 220 110"><rect x="10" y="20" width="200" height="8" fill="var(--ki-cyan-40)"/><rect x="30" y="28" width="22" height="56" fill="var(--wood)"/><rect x="120" y="28" width="22" height="56" fill="var(--wood)"/><rect x="52" y="28" width="68" height="56" fill="var(--wool)" opacity=".7"/><path d="M60 92h0" /><path d="M158 28v56" stroke="var(--ki-blue-acc)" stroke-width="2" marker-start="url(#a)" marker-end="url(#a)"/><text x="164" y="60" font-size="11" fill="var(--ink)">výška</text><path d="M30 96h22" stroke="var(--ki-blue-acc)" stroke-width="2"/><text x="22" y="108" font-size="11" fill="var(--ink)">šířka</text><path d="M41 14h90" stroke="var(--ki-cyan)" stroke-width="2"/><path d="M41 10v8M131 10v8" stroke="var(--ki-cyan)" stroke-width="2"/><text x="56" y="10" font-size="11" fill="var(--ink)">rozteč (osa–osa)</text></svg>';
+  const SVG_ROOF = '<svg viewBox="0 0 220 110"><path d="M20 90 110 20l90 70" fill="none" stroke="var(--ink-3)" stroke-width="3"/><path d="M24 84 106 22" stroke="var(--ki-cyan)" stroke-width="4"/><text x="36" y="44" font-size="11" fill="var(--ink)">délka krokve</text><path d="M20 100h180" stroke="var(--ki-blue-acc)" stroke-width="2"/><text x="70" y="96" font-size="11" fill="var(--ink)">(délka střechy = podél hřebene)</text></svg>';
+  const SVG_FACADE = '<svg viewBox="0 0 220 110"><path d="M40 30h110v70H40z" fill="var(--ki-cyan-20)" stroke="var(--ink-3)"/><path d="M150 30l40-15v70l-40 15" fill="var(--ki-cyan-40)" stroke="var(--ink-3)"/><rect x="60" y="45" width="20" height="20" fill="#fff"/><rect x="105" y="45" width="20" height="20" fill="#fff"/><path d="M30 30v70" stroke="var(--ki-blue-acc)" stroke-width="2"/><text x="2" y="70" font-size="11" fill="var(--ink)">výška</text><path d="M40 106h110l40-15" fill="none" stroke="var(--ki-cyan)" stroke-width="3"/><text x="70" y="118" font-size="11" fill="var(--ink)">obvod</text></svg>';
+  const HELP = {
+    frameDepth: ['Rozměry krokví', 'Výšku a šířku změřte na průřezu krokve, rozteč jako vzdálenost středů dvou sousedních krokví.', SVG_RAFTERS],
+    frameWidth: ['Rozměry krokví', 'Šířka je tloušťka krokve viditelná zespodu (obvykle 60–120 mm).', SVG_RAFTERS],
+    frameSpacing: ['Rozteč krokví', 'Změřte vzdálenost ze středu jedné krokve do středu sousední (obvykle 600–1000 mm).', SVG_RAFTERS],
+    rafterLen: ['Délka krokve', 'Měřte jen zateplovanou část – od pozednice po hřeben nebo po vodorovný strop podkroví.', SVG_ROOF],
+    roofLen: ['Délka střechy', 'Délka střešní roviny ve směru hřebene (u sedlové střechy obvykle délka domu).', SVG_ROOF],
+    perimeter: ['Obvod domu', 'Součet délek všech zateplovaných stěn. Výšku měřte od soklu po okap.', SVG_FACADE],
+    height: ['Výška', 'Výška zateplované stěny. Plochu štítů přidejte zvlášť nebo použijte režim „Znám plochu“.', SVG_FACADE],
+    maxExtra: ['Vrstva pod krokvemi', 'Izolace na roštu pod krokvemi přeruší tepelné mosty přes dřevo. Každý centimetr ale ubere výšku podkroví.', SVG_RAFTERS],
+    slab: ['Tloušťka stropu', 'Tloušťka nosné železobetonové desky bez podlahy a omítek – najdete ji v projektu domu (běžně 150–250 mm).', ''],
+  };
 
   /* ---------- stav ---------- */
   const fresh = () => ({ project: { name: '', level: 'doporucena', priority: 'vyvazeny', waste: '', energy: '' }, items: [], step: 1 });
@@ -166,8 +206,11 @@
       return `<div class="field${wide}"><label for="${id}">${esc(f.label)}</label><select id="${id}" data-k="${f.k}">${f.options.map(([v, l]) => `<option value="${esc(v)}" ${String(item[f.k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
     }
     const msg = rangeMsg(f.k, item[f.k]);
-    return `<div class="field${wide}${msg ? ' invalid' : ''}"><label for="${id}">${esc(f.label)}</label>
-      <div class="input-unit"><input id="${id}" type="number" inputmode="decimal" min="0" step="any" data-k="${f.k}" value="${esc(item[f.k])}"><span>${esc(f.unit)}</span></div>
+    const h = HELP[f.k];
+    const helpBtn = h ? `<button type="button" class="help-btn" data-help aria-expanded="false" aria-label="Nápověda: ${esc(h[0])}">?</button>` : '';
+    const helpPop = h ? `<div class="help-pop" hidden><strong>${esc(h[0])}</strong>${h[2]}<p>${esc(h[1])}</p></div>` : '';
+    return `<div class="field${wide}${msg ? ' invalid' : ''}"><label for="${id}">${esc(f.label)}${helpBtn}</label>
+      <div class="input-unit"><input id="${id}" type="number" inputmode="decimal" min="0" step="any" data-k="${f.k}" value="${esc(item[f.k])}"><span>${esc(f.unit)}</span></div>${helpPop}
       <p class="hint err" data-err>${esc(msg)}</p>${f.hint ? `<p class="hint">${esc(f.hint)}</p>` : ''}</div>`;
   }
 
@@ -210,6 +253,7 @@
     const same = state.items.filter((i) => i.type === type).length;
     if (same) item.name += ` ${same + 1}`;
     state.items.push(item);
+    track('item_add', { type });
     save(); renderItems();
     const el = document.querySelector(`.item[data-id="${item.id}"]`);
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.querySelector('.item-body input')?.focus({ preventScroll: true }); }
@@ -221,6 +265,7 @@
     const wool = 'url(#wool)';
     const defs = `<defs><pattern id="wool" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="var(--wool)"/><path d="M0 5c2.5-3 5 3 7.5 0S10 5 10 5" stroke="var(--wool-line)" fill="none"/></pattern>
       <pattern id="brick" width="16" height="10" patternUnits="userSpaceOnUse"><rect width="16" height="10" fill="#c97a5a"/><path d="M0 0h16M0 5h16M8 0v5M0 5v5" stroke="#a65d40" stroke-width="1"/></pattern>
+      <pattern id="eps" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#b7bcc2"/><circle cx="4" cy="4" r="2.6" fill="#c9cdd2"/></pattern>
       <pattern id="conc" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#a9b2ba"/><circle cx="2" cy="3" r=".9" fill="#7d8790"/><circle cx="6" cy="6" r=".7" fill="#7d8790"/></pattern></defs>`;
     const engine = res.typeInfo.engine === 'loose' && res.item.walkable ? 'framed' : res.typeInfo.engine;
     let g = '';
@@ -282,6 +327,39 @@
       g += `<rect x="12" y="${y - 5}" width="6" height="${hi + hs + 5}" fill="${wool}" stroke="var(--wool-line)" stroke-width=".6"/>`;
       g += `<rect x="8" y="10" width="4" height="${H - 18}" fill="#c97a5a"/>`;
       g += `<text x="${W - 10}" y="${y - 10}" text-anchor="end" font-size="9" fill="var(--ink-3)">${heavy ? 'nášlapná vrstva · roznášecí deska' : 'suchá podlaha'}</text>`;
+    } else if (engine === 'cellar') {
+      const t = res.layers[0].total; const s2 = Math.min(0.45, 70 / t);
+      g += `<rect x="8" y="30" width="${W - 16}" height="30" fill="url(#conc)"/>`;
+      g += `<rect x="8" y="14" width="${W - 16}" height="16" fill="#b9c0c6"/>`;
+      const h = t * s2;
+      g += `<rect x="8" y="60" width="${W - 16}" height="${h}" fill="${res.layers[0].product === 'tektalan' ? wool : 'url(#eps)'}" stroke="var(--wool-line)" stroke-width=".8"/>`;
+      g += `<rect x="8" y="${60 + h}" width="${W - 16}" height="5" fill="#c9b48a"/>`;
+      g += `<text x="${W - 10}" y="10" text-anchor="end" font-size="9" fill="var(--ink-3)">vytápěná místnost</text>`;
+      g += `<text x="${W - 10}" y="${80 + h}" text-anchor="end" font-size="9" fill="var(--ink-3)">sklep / garáž · povrch z dřevité vlny</text>`;
+    } else if (engine === 'over') {
+      const over = res.layers[0]; const cav = res.layers[1];
+      const shora = res.item.variant === 'shora';
+      const depth = shora ? (Number(res.item.frameDepth) || 140) : 0;
+      const sc = Math.min(0.4, 110 / (over.total + depth + 24));
+      let y = 14;
+      g += `<line x1="8" y1="${y - 4}" x2="${W - 8}" y2="${y - 4}" stroke="var(--brand)" stroke-width="2" stroke-dasharray="6 3"/>`;
+      const ho = over.total * sc;
+      g += `<rect x="8" y="${y}" width="${W - 16}" height="${ho}" fill="${wool}" stroke="var(--wool-line)" stroke-width=".6"/>`;
+      [50, W - 50].forEach((cx) => { g += `<rect x="${cx - 5}" y="${y}" width="10" height="${ho * 0.55}" fill="var(--wood)"/><rect x="${cx - 6}" y="${y + ho * 0.55}" width="12" height="${ho * 0.45}" fill="#9aa5ae"/>`; });
+      y += ho;
+      g += `<rect x="8" y="${y}" width="${W - 16}" height="3" fill="var(--brand)" opacity=".8"/>`; y += 3;
+      if (shora) {
+        const hc = depth * sc;
+        g += `<rect x="8" y="${y}" width="${W - 16}" height="${hc}" fill="${cav ? wool : 'var(--card)'}"/>`;
+        [30, W / 2, W - 30].forEach((cx) => { g += `<rect x="${cx - 7}" y="${y}" width="14" height="${hc}" fill="var(--wood)" stroke="#7a5532" stroke-width=".6"/>`; });
+        y += hc; g += `<rect x="8" y="${y}" width="${W - 16}" height="4" fill="#cfd6dc"/>`;
+        g += `<text x="${W - 10}" y="${y + 16}" text-anchor="end" font-size="9" fill="var(--ink-3)">původní podhled · interiér</text>`;
+      } else {
+        g += `<rect x="8" y="${y}" width="${W - 16}" height="8" fill="#d7b98f"/>`;
+        [40, W / 2, W - 40].forEach((cx) => { g += `<rect x="${cx - 8}" y="${y + 8}" width="16" height="34" fill="var(--wood)" stroke="#7a5532" stroke-width=".6"/>`; });
+        g += `<text x="${W - 10}" y="${y + 56}" text-anchor="end" font-size="9" fill="var(--ink-3)">přiznaný krov · interiér</text>`;
+      }
+      g += `<text x="${W - 10}" y="8" text-anchor="end" font-size="9" fill="var(--ink-3)">pojistná hydroizolace</text>`;
     } else if (engine === 'masonry') {
       const total = res.layers[0].total; const s = Math.min(0.42, 90 / total);
       const wW = 70; const x0 = 40;
@@ -392,7 +470,7 @@
       return `<tr><td><div class="pname">${esc(p.name)} · ${l.t} mm</div><div class="pdesc">${esc(p.desc)}</div></td>
         <td class="num">${fmt(l.m2)} m²</td><td class="num">${fmt(l.perPack, 2)} m²/${esc(p.packUnit)}</td>
         <td class="num"><span class="packs">${l.packs}</span> ${esc(unitWord(p.packUnit, l.packs))}</td>
-        <td class="num">${kc(l.price)}</td></tr>`;
+        <td class="num">${l.noPrice ? '<small>na dotaz</small>' : kc(l.price)}</td></tr>`;
     }).join('');
     if (agg.accessories.length) {
       rows += '<tr class="group"><td colspan="5">Vzduchotěsnost a příslušenství</td></tr>';
@@ -408,9 +486,26 @@
       <thead><tr><th>Produkt</th><th class="num">Potřeba</th><th class="num">Balení</th><th class="num">Koupit</th><th class="num">Cena bez DPH</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td colspan="4">Celkem bez DPH<br><small>vč. DPH ${Math.round(C.VAT * 100)} %</small></td><td class="num"><b>${kc(agg.price)}</b><br><small>${kc(agg.price * (1 + C.VAT))}</small></td></tr></tfoot></table></div>
+      ${agg.noPrice ? '<p class="hint">Desky Heraklith / Tektalan nejsou ve stavebním ceníku – cenu získáte u prodejce, v součtu nejsou zahrnuty.</p>' : ''}
       <p class="hint">Ceny dle ${esc(C.PRICE_LIST)}. Skutečné ceny u prodejců se mohou lišit – pro individuální nabídku kontaktujte prodejce.</p>`;
 
     $('#results').innerHTML = results.map(resultCard).join('') || '<div class="empty">Přidejte konstrukci v kroku 2.</div>';
+
+    const sub = K.subsidy(results); const S = C.SUBSIDY;
+    const eligible = Object.values(sub.areas).some((a) => a > 0);
+    $('#subsidy').innerHTML = eligible ? `<section class="subsidy">
+      <div class="subsidy-head"><span class="subsidy-tag">Dotace</span><h3>Nová zelená úsporám 2026</h3></div>
+      <div class="subsidy-grid">
+        <div><small>${esc(S.light.label)}</small><b>${sub.light ? `až ${kc(sub.light)}` : '—'}</b>
+          <span>${sub.light ? `dotace ${kc(S.light.rates.wall)}/m² stěny a střechy, ${kc(S.light.rates.attic)}/m² stropu pod půdou; max. ${kc(S.light.cap)}` : `podpora začíná od ${kc(S.light.min)} (nyní ${kc(sub.lightRaw)})`}</span></div>
+        <div><small>${esc(S.loan.label)}</small><b>až ${kc(sub.loan)}</b>
+          <span>bezúročný úvěr až ${kc(S.loan.rates.wall)}/m² stěny a střechy; max. ${kc(S.loan.cap)}</span></div>
+      </div>
+      <p class="hint">Orientační odhad pro rodinné domy dokončené před ${esc(S.builtBefore)}. Započteny jsou jen konstrukce, které splňují zvolený cíl. Podmínkou je odborný posudek a splnění technických požadavků výzvy (součinitel U) – aktuální podmínky ověřte na <a href="${esc(S.url)}" target="_blank" rel="noopener">novazelenausporam.cz</a>.</p>
+    </section>` : '';
+
+    renderDealers();
+    track('results_view', { items: results.length, area: Math.round(agg.totalArea), price: Math.round(agg.price), priority: state.project.priority, level: state.project.level });
   }
 
   function shoppingText() {
@@ -423,6 +518,31 @@
     state.items.forEach((i) => { const r = K.recommend(i, ctx()); if (r) out.push(`• ${i.name} (${fmt(r.area)} m²): ${r.layers.map((l) => `${C.PRODUCTS[l.product].name} ${l.parts.join('+')} mm`).join(', ')}${r.U != null ? `, U = ${fmtU(r.U)}` : ''}`); });
     return out.join('\n');
   }
+
+  /* ---------- prodejci ---------- */
+  const DEALERS = window.Dealers || [];
+  function renderDealers(query) {
+    const sec = $('#dealers');
+    sec.hidden = !DEALERS.length;
+    $('#btn-contact').href = DEALERS.length ? '#dealers' : C.BRAND.contactUrl;
+    if (!DEALERS.length) return;
+    const q = String(query || '').trim().toLowerCase();
+    const digits = q.replace(/\D/g, '');
+    let list = DEALERS.slice();
+    if (digits.length >= 3) {
+      const n = Number(digits.padEnd(5, '0').slice(0, 5));
+      list.sort((a, b) => Math.abs(Number(a.psc) - n) - Math.abs(Number(b.psc) - n));
+    } else if (q) {
+      list = list.filter((d) => `${d.city} ${d.name}`.toLowerCase().includes(q));
+    }
+    $('#dealer-list').innerHTML = list.slice(0, 6).map((d) => `<li>
+      <strong>${esc(d.name)}</strong><span>${esc(d.street || '')}, ${esc(d.psc || '')} ${esc(d.city || '')}</span>
+      <span>${d.phone ? `<a href="tel:${esc(d.phone.replace(/\s/g, ''))}">${esc(d.phone)}</a>` : ''}${d.web ? ` · <a href="${esc(d.web)}" target="_blank" rel="noopener">web</a>` : ''}</span></li>`).join('')
+      || '<li class="empty">Pro zadané místo jsme prodejce nenašli.</li>';
+  }
+  $('#dealer-form').addEventListener('submit', (e) => {
+    e.preventDefault(); const q = $('#dealer-psc').value; renderDealers(q); track('dealer_search', { query_len: q.length });
+  });
 
   /* ---------- navigace ---------- */
   function go(step, scroll) {
@@ -438,6 +558,7 @@
     $('#hero').classList.toggle('compact', step !== 1);
     $('#summary-bar').hidden = step !== 2;
     document.body.classList.toggle('has-bar', step === 2);
+    track('step_view', { step });
     if (step === 1) renderStep1();
     if (step === 2) renderItems();
     if (step === 3) renderResults();
@@ -452,19 +573,27 @@
 
   /* ---------- události ---------- */
   document.addEventListener('click', (e) => {
+    const hb = e.target.closest('[data-help]');
+    if (hb) {
+      e.preventDefault();
+      const pop = hb.closest('.field').querySelector('.help-pop');
+      pop.hidden = !pop.hidden; hb.setAttribute('aria-expanded', String(!pop.hidden));
+      track('help_open', { field: hb.closest('.field').querySelector('input')?.dataset.k });
+      return;
+    }
     const goBtn = e.target.closest('[data-go]');
     if (goBtn) { go(goBtn.dataset.go); return; }
     const add = e.target.closest('[data-add]');
     if (add) { addItem(add.dataset.add); return; }
     const lv = e.target.closest('[data-level]');
-    if (lv) { state.project.level = lv.dataset.level; save(); renderResults(); return; }
+    if (lv) { state.project.level = lv.dataset.level; save(); track('level_change', { level: lv.dataset.level }); renderResults(); return; }
     const pv = e.target.closest('[data-prio]');
-    if (pv) { state.project.priority = pv.dataset.prio; save(); renderResults(); toast(`Varianta: ${C.PRIORITIES[pv.dataset.prio].label}`); return; }
+    if (pv) { state.project.priority = pv.dataset.prio; save(); track('variant_change', { priority: pv.dataset.prio }); renderResults(); toast(`Varianta: ${C.PRIORITIES[pv.dataset.prio].label}`); return; }
     const act = e.target.closest('[data-act]');
     if (act) {
       const card = act.closest('.item'); const idx = state.items.findIndex((i) => i.id === card.dataset.id);
       if (idx < 0) return;
-      if (act.dataset.act === 'del') state.items.splice(idx, 1);
+      if (act.dataset.act === 'del') { track('item_remove', { type: state.items[idx].type }); state.items.splice(idx, 1); }
       if (act.dataset.act === 'dup') state.items.splice(idx + 1, 0, { ...structuredClone(state.items[idx]), id: uid(), name: state.items[idx].name + ' (kopie)' });
       if (act.dataset.act === 'mode') state.items[idx].mode = act.dataset.mode;
       save(); renderItems();
@@ -495,10 +624,11 @@
   $('#waste').addEventListener('input', (e) => { state.project.waste = e.target.value; save(); });
   $('#energy').addEventListener('input', (e) => { state.project.energy = e.target.value; save(); });
 
-  $('#btn-print').addEventListener('click', () => window.print());
+  $('#btn-print').addEventListener('click', () => { track('print'); window.print(); });
   const enc = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const dec = (s2) => JSON.parse(decodeURIComponent(escape(atob(s2.replace(/-/g, '+').replace(/_/g, '/')))));
   $('#btn-share').addEventListener('click', async () => {
+    track('share');
     const url = `${location.href.split('#')[0]}#p=${enc({ project: state.project, items: state.items })}`;
     try {
       if (navigator.share) await navigator.share({ title: state.project.name || 'Plánovač zateplení', url });
@@ -506,7 +636,7 @@
     } catch (err) { if (err && err.name !== 'AbortError') toast('Sdílení se nepodařilo.'); }
   });
   $('#btn-copy').addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(shoppingText()); toast('Nákupní seznam zkopírován.'); }
+    try { await navigator.clipboard.writeText(shoppingText()); toast('Nákupní seznam zkopírován.'); track('copy'); }
     catch (err) { toast('Kopírování se nepodařilo.'); }
   });
   $('#btn-reset').addEventListener('click', () => {
@@ -528,7 +658,10 @@
     } catch (e) { /* neplatný odkaz */ }
     history.replaceState(null, '', location.pathname + location.search);
   }
-  $('#btn-contact').href = C.BRAND.contactUrl;
+  $('#btn-contact').href = DEALERS.length ? '#dealers' : C.BRAND.contactUrl;
+  if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
   renderTypeGrid();
   go(state.step || 1, false);
 })();

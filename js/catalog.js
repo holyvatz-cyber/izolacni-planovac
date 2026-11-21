@@ -8,6 +8,7 @@
     appName: 'Plánovač zateplení',
     company: 'Knauf Insulation',
     contactUrl: '#',
+    gtmId: '', // např. 'GTM-XXXXXXX' – zapne měření návštěvnosti (se souhlasem)
   };
 
   /*
@@ -142,16 +143,31 @@
       desc: 'Kročejová izolace s mimořádnými akustickými vlastnostmi pod betonové a anhydritové podlahy.',
       v: { 20: [15.0, 294.22], 30: [9.75, 441.33] },
     },
+    /* --- strop nad sklepem / garáží: desky z dřevité vlny (Heraklith); ceny nejsou v ceníku 07/2026 --- */
+    tektalan: {
+      name: 'Tektalan A2-SmartTec', lambda: 0.034, form: 'deska', packUnit: 'deska', material: 'kamenná + dřevitá vlna',
+      desc: 'Nehořlavá (A2-s1, d0) kompozitní deska 1000 × 600 mm s povrchem z dřevité vlny pro stropy sklepů a garáží.',
+      v: { 50: [0.6, null], 75: [0.6, null], 100: [0.6, null], 125: [0.6, null], 150: [0.6, null], 175: [0.6, null], 200: [0.6, null] },
+      R: { 50: 1.2, 75: 1.95, 100: 2.7, 125: 3.4, 150: 4.15, 175: 4.9, 200: 5.65 },
+    },
+    heratekta: {
+      name: 'Heratekta C2/C3 031', lambda: 0.031, form: 'deska', packUnit: 'deska', material: 'EPS + dřevitá vlna',
+      desc: 'Kompozitní deska 2000 × 600 mm s jádrem z šedého EPS (třída reakce na oheň E) pro stropy sklepů a garáží.',
+      v: { 50: [1.2, null], 75: [1.2, null], 100: [1.2, null], 150: [1.2, null] },
+      R: { 50: 1.15, 75: 1.8, 100: 2.35, 150: 4.65 },
+    },
   };
   Object.values(PRODUCTS).forEach((p) => {
     p.thicknesses = Object.keys(p.v).map(Number).sort((a, b) => a - b);
     p.packM2 = {}; p.priceM2 = {};
     p.thicknesses.forEach((t) => { p.packM2[t] = p.v[t][0]; p.priceM2[t] = p.v[t][1]; });
+    p.rOf = (t) => (p.R && p.R[t]) || t / 1000 / p.lambda;
   });
 
   const ACCESSORIES = {
     lds100: { name: 'Homeseal LDS 100', desc: 'Parozábrana sd = 100 m, role 2 × 50 m (přesahy 150 mm)', unit: 'role', perUnit: 100, perLabel: 'm²', price: 4200 },
     solifit: { name: 'Homeseal LDS Solifit', desc: 'Páska 60 mm pro vzduchotěsné spoje fólií, role 25 m', unit: 'role', perUnit: 25, perLabel: 'm', price: 485 },
+    lds2: { name: 'Homeseal LDS 2', desc: 'Parobrzda sd = 2 m pro difúzně otevřené střechy, role 1,5 × 50 m', unit: 'role', perUnit: 75, perLabel: 'm²', price: 3075 },
     lds35: { name: 'Homeseal LDS 35 FixPlus', desc: 'Parozábrana pro ploché střechy s lepicími páskami, role 3 × 50 m', unit: 'role', perUnit: 150, perLabel: 'm²', price: 4200 },
     edge60: { name: 'Okrajový pásek 15 × 60 mm', desc: 'Oddělení plovoucí podlahy od stěn, kusy 1 m', unit: 'm', perUnit: 1, perLabel: 'm', price: 48 },
     edge100: { name: 'Okrajový pásek 15 × 100 mm', desc: 'Oddělení plovoucí podlahy od stěn, kusy 1 m', unit: 'm', perUnit: 1, perLabel: 'm', price: 54 },
@@ -170,6 +186,7 @@
     roof: { pozadovana: 0.24, doporucena: 0.16, pasivni: 0.12 },
     ceilingAttic: { pozadovana: 0.30, doporucena: 0.20, pasivni: 0.12 },
     wallExt: { pozadovana: 0.30, doporucena: 0.25, pasivni: 0.15 },
+    cellar: { pozadovana: 0.60, doporucena: 0.40, pasivni: 0.25 },
   };
 
   /* Pořadí produktů podle priority zákazníka; použije se první, který splní cíl. */
@@ -238,6 +255,16 @@
     pts: { 20: [57, 55, 53, 51, 49, 48, 47], 30: [55, 53, 51, 49, 47, 46, 45], 40: [54, 52, 50, 48, 46, 45, 44], 50: [53, 51, 49, 47, 45, 44, 43] },
   };
 
+  /* Dotace Nová zelená úsporám 2026 – ORIENTAČNÍ údaje (zdroj: novazelenausporam.cz, Závazné pokyny
+   * NZÚ Light RD 2026 a NZÚ 2026+, stav 06/2026). Před nasazením ověřte aktuální znění výzvy. */
+  const SUBSIDY = {
+    url: 'https://novazelenausporam.cz/',
+    builtBefore: '1. 7. 2013',
+    light: { label: 'NZÚ Light (zranitelné domácnosti)', cap: 250000, min: 50000, rates: { wall: 2000, roof: 2000, attic: 750 } },
+    loan: { label: 'NZÚ 2026+ – bezúročný úvěr', cap: 750000, rates: { wall: 3500, roof: 3500 } },
+    byType: { etics: 'wall', venti: 'wall', drevostavba: 'wall', sikma: 'roof', nadkrokve: 'roof', plocha: 'roof', strop: 'attic' },
+  };
+
   const TYPES = {
     sikma: {
       label: 'Šikmá střecha / podkroví', short: 'Mezi a pod krokve',
@@ -263,6 +290,14 @@
       label: 'Plochá střecha', short: 'Dvouvrstvá skladba',
       icon: 'flat', target: 'roof', engine: 'flat',
     },
+    nadkrokve: {
+      label: 'Šikmá střecha nad krokvemi', short: 'Přiznaný krov / rekonstrukce shora',
+      icon: 'over', target: 'roof', engine: 'over',
+    },
+    sklep: {
+      label: 'Strop nad sklepem / garáží', short: 'Desky Heraklith zespodu',
+      icon: 'cellar', target: 'cellar', engine: 'cellar',
+    },
     podlaha: {
       label: 'Plovoucí podlaha', short: 'Kročejová izolace',
       icon: 'floor', target: null, engine: 'floor',
@@ -273,7 +308,7 @@
     },
   };
 
-  const api = { FLAT_DECKS, FLOOR_TYPES, FLOOR_LOADS, IMPACT, PRICE_LIST, VAT, BRAND, PRODUCTS, ACCESSORIES, LEVELS, U_TARGETS, PRIORITIES, EXISTING_WALLS, EXISTING_CEILINGS, TYPES };
+  const api = { SUBSIDY, FLAT_DECKS, FLOOR_TYPES, FLOOR_LOADS, IMPACT, PRICE_LIST, VAT, BRAND, PRODUCTS, ACCESSORIES, LEVELS, U_TARGETS, PRIORITIES, EXISTING_WALLS, EXISTING_CEILINGS, TYPES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Catalog = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -8,6 +8,8 @@
   <meta name="theme-color" content="#0099DE">
   <link rel="icon" type="image/png" href="assets/knauf-insulation-logo.png">
   <link rel="stylesheet" href="css/fonts.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -133,6 +135,8 @@
       <h3 class="sec-title">Nákupní seznam</h3>
       <div id="shopping"></div>
 
+      <div id="subsidy"></div>
+
       <h3 class="sec-title">Doporučená skladba podle konstrukcí</h3>
       <div id="results" aria-live="polite"></div>
 
@@ -146,8 +150,16 @@
           <strong>Máte hotovo? Poptejte materiál u prodejce.</strong>
           <span>Nákupní seznam si vytiskněte nebo pošlete odkazem.</span>
         </div>
-        <a class="btn primary big" id="btn-contact" href="#">Najít prodejce</a>
+        <a class="btn primary big" id="btn-contact" href="#dealers">Najít prodejce</a>
       </div>
+      <section class="dealers no-print" id="dealers" hidden>
+        <h3 class="sec-title">Kde koupit</h3>
+        <form class="dealer-form" id="dealer-form">
+          <label for="dealer-psc">Vaše PSČ nebo město</label>
+          <div class="dealer-row"><input id="dealer-psc" type="text" inputmode="text" autocomplete="postal-code" placeholder="např. 602 00 nebo Brno"><button type="submit" class="btn primary">Hledat</button></div>
+        </form>
+        <ul class="dealer-list" id="dealer-list"></ul>
+      </section>
       <div class="actions no-print">
         <button type="button" class="btn ghost" data-go="2">← Upravit konstrukce</button>
       </div>
@@ -172,7 +184,14 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <div class="consent" id="consent" hidden>
+    <p>Pro zlepšování plánovače bychom rádi měřili anonymní statistiky návštěvnosti. Souhlasíte?</p>
+    <div><button type="button" class="btn ghost small" data-consent="no">Nesouhlasím</button><button type="button" class="btn primary small" data-consent="yes">Souhlasím</button></div>
+  </div>
+
   <script src="js/catalog.js"></script>
+  <script src="js/dealers.js"></script>
+  <script src="js/analytics.js"></script>
   <script src="js/calc.js"></script>
   <script src="js/app.js"></script>
 </body>

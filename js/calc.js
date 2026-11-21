@@ -94,6 +94,7 @@
         const plane = num(item.rafterLen) * num(item.roofLen);
         return { area: Math.max(0, plane * sides - w * ROOF_WINDOW_M2), perimeter: sides * 2 * (num(item.rafterLen) + num(item.roofLen)), windows: w };
       }
+      case 'sklep':
       case 'plocha':
       case 'podlaha':
       case 'strop':
@@ -332,6 +333,68 @@
     return res;
   }
 
+  function recommendCellar(item, target, prio) {
+    const ex = C.EXISTING_CEILINGS[item.ceiling] || C.EXISTING_CEILINGS.beton;
+    const fire = item.fire !== false && item.fire !== 'ne';
+    const pid = !fire && prio === 'vykon' ? 'heratekta' : 'tektalan';
+    const p = C.PRODUCTS[pid];
+    const rsi = 0.17; const rse = 0.17; const rOther = ex.R + 0.01;
+    const uOf = (t) => 1 / (rsi + rse + rOther + p.rOf(t));
+    const uBase = 1 / (rsi + rse + rOther);
+    let t = p.thicknesses.find((x) => uOf(x) <= target); let ok = true;
+    if (!t) { t = p.thicknesses[p.thicknesses.length - 1]; ok = false; }
+    const res = { U: uOf(t), uBase, ok, layers: [], qtyLayers: [], notes: [], warnings: [], acc: [] };
+    res.layers.push({ name: 'Kotveno zespodu na strop', product: pid, parts: [t], total: t, f: 0 });
+    res.qtyLayers.push({ product: pid, t, factor: 1 });
+    res.notes.push(`Stávající strop má orientačně U ≈ ${uBase.toFixed(2)} W/(m²K); po zateplení U ≈ ${uOf(t).toFixed(2)} W/(m²K).`);
+    res.notes.push(pid === 'tektalan' ? 'Tektalan A2-SmartTec je nehořlavý (A2-s1, d0) – vhodný i do garáží a na únikové cesty.' : 'Heratekta má jádro z EPS (třída reakce na oheň E) – do garáží a na únikové cesty volte nehořlavý Tektalan A2-SmartTec.');
+    res.notes.push('Desky kotvěte talířovými hmoždinkami do stropu; povrch z dřevité vlny lze ponechat přiznaný, natřít nebo omítnout.');
+    res.notes.push('Montujte při teplotě +7 až +30 °C a relativní vlhkosti 40–75 %.');
+    if (!ok) res.warnings.push('Cíle nelze dosáhnout jednou deskou maximální tloušťky – kontaktujte technickou podporu.');
+    return res;
+  }
+
+  function recommendOver(item, target, prio) {
+    const shora = item.variant === 'shora';
+    const order = C.PRIORITIES[prio].cavity;
+    const maxOver = Math.max(60, num(item.maxOver, 260));
+    const depth = shora ? num(item.frameDepth, 160) : 0;
+    const width = num(item.frameWidth, 80); const spacing = Math.max(width + 1, num(item.frameSpacing, 900));
+    const f = shora ? width / spacing : 0;
+    const rOther = shora ? 0.05 : 0.024 / 0.13; // původní podhled / pohledový záklop
+    let best = null;
+    for (const pid of order) {
+      const p = C.PRODUCTS[pid];
+      const fill = shora ? bestFill(p.thicknesses, depth, 2) : { parts: [], total: 0 };
+      if (!fill) continue;
+      const cavity = { depth, fill: fill.total, lambda: p.lambda, f };
+      const calc = (t) => uFramed({ rsi: 0.10, rse: 0.10, rOther, cavity, extra: { t, lambda: p.lambda, f: EXTRA_GRID_FRACTION } });
+      const over = combos(p.thicknesses, 3).filter((c) => c.total <= maxOver).sort((a, b) => a.total - b.total || a.parts.length - b.parts.length);
+      const okOver = over.filter((c) => calc(c.total) <= target);
+      const minT = okOver.length ? okOver[0].total : 0;
+      const hit = okOver.filter((c) => c.total <= minT + 20).sort((a, b) => a.parts.length - b.parts.length || a.total - b.total)[0];
+      const cand = hit ? { pid, fill, over: hit, U: calc(hit.total), ok: true } : (over.length ? { pid, fill, over: over[over.length - 1], U: calc(over[over.length - 1].total), ok: false } : null);
+      if (!cand) continue;
+      if (cand.ok) { best = cand; break; }
+      if (!best || cand.U < best.U) best = cand;
+    }
+    const res = { U: best.U, ok: best.ok, layers: [], qtyLayers: [], notes: [], warnings: [], acc: [] };
+    res.layers.push({ name: 'Nad krokvemi – mezi hranoly na distančních podložkách MW', product: best.pid, parts: best.over.parts, total: best.over.total, f: EXTRA_GRID_FRACTION });
+    best.over.parts.forEach((t) => res.qtyLayers.push({ product: best.pid, t, factor: 1 - EXTRA_GRID_FRACTION }));
+    if (shora && best.fill.total) {
+      res.layers.push({ name: 'Mezi krokvemi (dutiny vyplnit)', product: best.pid, parts: best.fill.parts, total: best.fill.total, f });
+      best.fill.parts.forEach((t) => res.qtyLayers.push({ product: best.pid, t, factor: 1 - f }));
+    }
+    res.notes.push(shora
+      ? 'Rekonstrukce shora: původní podhled zůstává; přes krokve se položí parobrzda Homeseal LDS FlexPlus nebo LDS 2 a vyplní se všechny dutiny.'
+      : 'Přiznaný krov: na krokve se položí pohledový záklop, na něj parobrzda Homeseal LDS 2 a nad ní konstrukce zateplení.');
+    res.notes.push('Nosné hranoly se kladou na distanční hranoly z kamenné vlny Knauf Insulation (bez tepelného mostu) a kotví vruty Twin UD – počet a rozmístění určí statik.');
+    res.notes.push('Následuje pojistná hydroizolace, kontralatě, latě a krytina. Zateplení střechy napojte na zateplení fasády.');
+    if (!best.ok) res.warnings.push(`Cíle nelze dosáhnout s max. ${maxOver} mm nad krokvemi – zvyšte tloušťku nebo kontaktujte technickou podporu.`);
+    res.extraAcc = [{ id: 'lds2', perArea: 1.15 }, { id: 'solifit', perArea: 1 / 1.4 }];
+    return res;
+  }
+
   /* ---------- hlavní funkce ---------- */
   function recommend(item, ctx) {
     const type = C.TYPES[item.type];
@@ -345,6 +408,8 @@
     if (type.engine === 'acoustic') res = recommendAcoustic(item, prio);
     else if (type.engine === 'flat') res = recommendFlat(item, target, prio);
     else if (type.engine === 'floor') res = recommendFloor(item, prio);
+    else if (type.engine === 'cellar') res = recommendCellar(item, target, prio);
+    else if (type.engine === 'over') res = recommendOver(item, target, prio);
     else if (type.engine === 'masonry') res = recommendMasonry(item, target, prio);
     else if (type.engine === 'loose') res = item.walkable ? recommendFramed(item, target, prio) : recommendLoose(item, target, prio);
     else res = recommendFramed(item, target, prio);
@@ -395,7 +460,8 @@
       const p = C.PRODUCTS[e.product];
       const per = p.packM2[e.t] || 1;
       const packs = Math.ceil(e.m2 / per - 1e-9);
-      return { ...e, perPack: per, packs, m3: e.m2 * e.t / 1000, price: packs * per * (p.priceM2[e.t] || 0) };
+      const pm = p.priceM2[e.t];
+      return { ...e, perPack: per, packs, m3: e.m2 * e.t / 1000, price: pm == null ? 0 : packs * per * pm, noPrice: pm == null };
     }).sort((a, b) => a.product.localeCompare(b.product) || b.t - a.t);
 
     const accMap = new Map();
@@ -410,10 +476,24 @@
     });
     const totalArea = results.reduce((s, r) => s + (r ? r.area : 0), 0);
     const price = insulation.reduce((s, l) => s + l.price, 0) + accessories.reduce((s, a) => s + a.price, 0);
-    return { insulation, accessories, totalArea, price, totalPacks: insulation.reduce((s, l) => s + l.packs, 0) };
+    const noPrice = insulation.some((l) => l.noPrice);
+    return { insulation, accessories, totalArea, price, noPrice, totalPacks: insulation.reduce((s, l) => s + l.packs, 0) };
   }
 
-  const api = { recommend, aggregate, geometry, bestFill, bestCover, uFramed, uHomogeneous, num, round };
+  /** Orientační odhad podpory NZÚ podle ploch jednotlivých konstrukcí. */
+  function subsidy(results) {
+    const S = C.SUBSIDY; const areas = { wall: 0, roof: 0, attic: 0 };
+    for (const r of results) {
+      const k = r && S.byType[r.item.type];
+      if (k && r.ok && r.area > 0) areas[k] += r.area;
+    }
+    const sum = (rates) => Object.entries(areas).reduce((s2, [k, a]) => s2 + a * (rates[k] || 0), 0);
+    const light = Math.min(S.light.cap, sum(S.light.rates));
+    const loan = Math.min(S.loan.cap, sum(S.loan.rates));
+    return { areas, light: light >= S.light.min ? light : 0, lightRaw: sum(S.light.rates), loan };
+  }
+
+  const api = { subsidy, recommend, aggregate, geometry, bestFill, bestCover, uFramed, uHomogeneous, num, round };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Calc = api;
 })(typeof window !== 'undefined' ? window : globalThis);
