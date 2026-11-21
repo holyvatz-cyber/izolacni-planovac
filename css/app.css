@@ -51,7 +51,6 @@ h3 { font-size: 1.02rem; margin: 0; }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
 [hidden] { display: none !important; }
 
-.demo-banner { background: var(--warn-soft); color: var(--warn); font-size: .85rem; text-align: center; padding: .5rem 16px; }
 
 /* Topbar */
 .topbar { background: var(--card); border-bottom: 1px solid var(--line); }
@@ -177,6 +176,8 @@ table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { padding: .7rem .85rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); background: var(--bg); font-weight: 600; }
 tr:last-child td { border-bottom: 0; }
+tfoot td { background: var(--bg); border-top: 1.5px solid var(--line); font-weight: 600; }
+tfoot small, td small { font-weight: 400; color: var(--ink-3); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 td .pname { font-weight: 600; }
 td .pdesc { color: var(--ink-3); font-size: .8rem; }
@@ -225,7 +226,7 @@ tr.group td { background: var(--bg); font-weight: 600; font-size: .78rem; color:
 
 @media print {
   body { background: #fff; font-size: 12px; }
-  .topbar button, .stepper, .no-print, .demo-banner, .toast { display: none !important; }
+  .topbar button, .stepper, .no-print, .toast { display: none !important; }
   .panel { box-shadow: none; padding: 0; }
   .rcard { grid-template-columns: 200px 1fr; }
 }

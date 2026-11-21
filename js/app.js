@@ -10,6 +10,7 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n, d = 1) => Number(n).toLocaleString('cs-CZ', { minimumFractionDigits: d, maximumFractionDigits: d });
   const fmtU = (n) => fmt(n, 2);
+  const kc = (n) => `${Math.round(n).toLocaleString('cs-CZ')} Kč`;
   const uid = () => Math.random().toString(36).slice(2, 9);
 
   const ICONS = {
@@ -271,7 +272,6 @@
         ${layers}
         ${ubarHtml(res)}
         <div class="lines">Potřeba vč. prořezu: ${lines}</div>
-        ${res.layers.some((l) => !C.PRODUCTS[l.product].verified) ? '<div class="warning">Dostupnost tohoto produktu a obsah balení na českém trhu ověřte u prodejce.</div>' : ''}
         ${res.warnings.map((w) => `<div class="warning">${esc(w)}</div>`).join('')}
         ${res.notes.length ? `<ul class="notes">${res.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       </div></article>`;
@@ -292,29 +292,33 @@
     $('#tiles').innerHTML = [
       [fmt(agg.totalArea, 0) + ' m²', 'zateplovaná plocha'],
       [agg.totalPacks, 'balení izolace'],
-      [fmt(m3, 1) + ' m³', 'objem izolace'],
+      [kc(agg.price * (1 + C.VAT)), 'orientační cena vč. DPH'],
       withTarget.length ? [`${okCount}/${withTarget.length}`, 'konstrukcí splňuje cíl'] : [results.length, 'konstrukcí'],
     ].map(([b, s]) => `<div class="tile"><b>${b}</b><span>${s}</span></div>`).join('');
 
-    let rows = '<tr class="group"><td colspan="4">Izolace</td></tr>';
+    let rows = '<tr class="group"><td colspan="5">Izolace</td></tr>';
     rows += agg.insulation.map((l) => {
       const p = C.PRODUCTS[l.product];
       return `<tr><td><div class="pname">${esc(p.name)} · ${l.t} mm</div><div class="pdesc">${esc(p.desc)}</div></td>
         <td class="num">${fmt(l.m2)} m²</td><td class="num">${fmt(l.perPack, 2)} m²/${esc(p.packUnit)}</td>
-        <td class="num"><span class="packs">${l.packs}</span> ${esc(p.packUnit === 'role' ? (l.packs === 1 ? 'role' : 'rolí') : (l.packs === 1 ? 'balík' : 'balíků'))}</td></tr>`;
+        <td class="num"><span class="packs">${l.packs}</span> ${esc(p.packUnit === 'role' ? (l.packs === 1 ? 'role' : 'rolí') : (l.packs === 1 ? 'balík' : 'balíků'))}</td>
+        <td class="num">${kc(l.price)}</td></tr>`;
     }).join('');
     if (agg.accessories.length) {
-      rows += '<tr class="group"><td colspan="4">Vzduchotěsnost a příslušenství</td></tr>';
+      rows += '<tr class="group"><td colspan="5">Vzduchotěsnost a příslušenství</td></tr>';
       rows += agg.accessories.map((a) => {
         const d = C.ACCESSORIES[a.id];
         return `<tr><td><div class="pname">${esc(d.name)}</div><div class="pdesc">${esc(d.desc)}</div></td>
           <td class="num">${fmt(a.need, 0)} ${esc(d.perLabel)}</td><td class="num">${d.perUnit} ${esc(d.perLabel)}/${esc(d.unit)}</td>
-          <td class="num"><span class="packs">${a.qty}</span> ${esc(d.unit)}</td></tr>`;
+          <td class="num"><span class="packs">${a.qty}</span> ${esc(d.unit)}</td>
+          <td class="num">${kc(a.price)}</td></tr>`;
       }).join('');
     }
     $('#shopping').innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>Produkt</th><th class="num">Potřeba</th><th class="num">Balení</th><th class="num">Koupit</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
+      <thead><tr><th>Produkt</th><th class="num">Potřeba</th><th class="num">Balení</th><th class="num">Koupit</th><th class="num">Cena bez DPH</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="4">Celkem bez DPH<br><small>vč. DPH ${Math.round(C.VAT * 100)} %</small></td><td class="num"><b>${kc(agg.price)}</b><br><small>${kc(agg.price * (1 + C.VAT))}</small></td></tr></tfoot></table></div>
+      <p class="hint">Ceny dle ${esc(C.PRICE_LIST)}. Skutečné ceny u prodejců se mohou lišit – pro individuální nabídku kontaktujte prodejce.</p>`;
 
     $('#results').innerHTML = results.map(resultCard).join('') || '<div class="empty">Přidejte konstrukci v kroku 2.</div>';
   }
@@ -324,6 +328,7 @@
     const out = [`${state.project.name || 'Plánovač zateplení'} – nákupní seznam`, ''];
     lastAgg.insulation.forEach((l) => { const p = C.PRODUCTS[l.product]; out.push(`${p.name} ${l.t} mm – ${l.packs}× ${p.packUnit} (${fmt(l.m2)} m²)`); });
     lastAgg.accessories.forEach((a) => { const d = C.ACCESSORIES[a.id]; out.push(`${d.name} – ${a.qty}× ${d.unit}`); });
+    out.push(`Orientační cena: ${kc(lastAgg.price)} bez DPH (${kc(lastAgg.price * (1 + C.VAT))} vč. DPH) – ${C.PRICE_LIST}`);
     out.push('', 'Konstrukce:');
     state.items.forEach((i) => { const r = K.recommend(i, ctx()); if (r) out.push(`• ${i.name} (${fmt(r.area)} m²): ${r.layers.map((l) => `${C.PRODUCTS[l.product].name} ${l.parts.join('+')} mm`).join(', ')}${r.U != null ? `, U = ${fmtU(r.U)}` : ''}`); });
     return out.join('\n');

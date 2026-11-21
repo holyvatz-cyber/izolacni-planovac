@@ -44,14 +44,13 @@
     return best;
   }
 
-  /** Nejmenší skladba ≥ need, při shodě méně vrstev. */
-  function bestCover(thicknesses, need, maxLayers = 2) {
-    let best = null;
-    for (const c of combos(thicknesses, maxLayers)) {
-      if (c.total < need) continue;
-      if (!best || c.total < best.total || (c.total === best.total && c.parts.length < best.parts.length)) best = c;
-    }
-    return best;
+  /** Nejmenší skladba ≥ need; méně vrstev má přednost, pokud je nejvýš o `tol` mm silnější. */
+  function bestCover(thicknesses, need, maxLayers = 2, tol = 20) {
+    const ok = combos(thicknesses, maxLayers).filter((c) => c.total >= need);
+    if (!ok.length) return null;
+    const min = Math.min(...ok.map((c) => c.total));
+    return ok.filter((c) => c.total <= min + tol)
+      .sort((a, b) => a.parts.length - b.parts.length || a.total - b.total)[0];
   }
 
   /* ---------- U-hodnoty ---------- */
@@ -128,7 +127,7 @@
     const spacing = Math.max(width + 1, num(item.frameSpacing, 900));
     const f = width / spacing;
     const maxExtra = Math.max(0, num(item.maxExtra, 100));
-    const order = C.PRIORITIES[prio].cavity;
+    const order = item.type === 'drevostavba' ? C.PRIORITIES[prio].wall : C.PRIORITIES[prio].cavity;
 
     const evaluate = (pid) => {
       const p = C.PRODUCTS[pid];
@@ -209,44 +208,52 @@
     return null;
   }
 
-  function recommendMasonry(item, target) {
+  function recommendMasonry(item, target, prio) {
     const isVenti = item.type === 'venti';
-    const pid = isVenti ? 'naturboardventi' : 'fkdsthermal';
-    const p = C.PRODUCTS[pid];
     const wall = C.EXISTING_WALLS[item.wall] || C.EXISTING_WALLS.cp450;
     const rsi = 0.13; const rse = isVenti ? 0.13 : 0.04;
     const dU = isVenti ? 0.03 : 0.01;
     const rOther = wall.R + 0.03;
     const uBase = uHomogeneous({ rsi, rse, rOther, layers: [] });
-    const need = Math.max(0, (1 / (target - dU) - rsi - rse - rOther) * p.lambda * 1000);
-    let cover = bestCover(p.thicknesses, need, isVenti ? 2 : 1);
-    let ok = true;
-    if (!cover) { cover = { parts: [p.thicknesses[p.thicknesses.length - 1]], total: p.thicknesses[p.thicknesses.length - 1] }; ok = false; }
-    const U = uHomogeneous({ rsi, rse, rOther, layers: [{ t: cover.total, lambda: p.lambda }] }) + dU;
+    const list = C.PRIORITIES[prio][isVenti ? 'venti' : 'etics'];
+    let best = null;
+    for (const pid of list) {
+      const p = C.PRODUCTS[pid];
+      const need = Math.max(0, (1 / (target - dU) - rsi - rse - rOther) * p.lambda * 1000);
+      let cover = bestCover(p.thicknesses, need, isVenti ? 2 : 1);
+      let ok = true;
+      if (!cover) { const tMax = p.thicknesses[p.thicknesses.length - 1]; cover = isVenti ? { parts: [tMax, tMax], total: 2 * tMax } : { parts: [tMax], total: tMax }; ok = false; }
+      const U = uHomogeneous({ rsi, rse, rOther, layers: [{ t: cover.total, lambda: p.lambda }] }) + dU;
+      const cand = { pid, cover, ok, U };
+      if (ok) { best = cand; break; }
+      if (!best || U < best.U) best = cand;
+    }
+    const { pid, cover, ok, U } = best;
     const res = { U, uBase, ok, layers: [], qtyLayers: [], notes: [], warnings: [] };
     res.layers.push({ name: isVenti ? 'Mezi nosný rošt fasády' : 'Lepeno a kotveno na fasádu', product: pid, parts: cover.parts, total: cover.total, f: 0 });
     cover.parts.forEach((t) => res.qtyLayers.push({ product: pid, t, factor: 1 }));
     res.notes.push(`Stávající stěna má orientačně U ≈ ${uBase.toFixed(2)} W/(m²K); po zateplení U ≈ ${U.toFixed(2)} W/(m²K).`);
     if (isVenti) {
-      res.notes.push('Výpočet zahrnuje přirážku na tepelné mosty kotevních konzol (ΔU = 0,03).');
+      res.notes.push('Výpočet zahrnuje přirážku na tepelné mosty kotevních konzol (ΔU = 0,03). Izolaci lze kotvit držáky VF Holder bez tepelného mostu.');
       res.notes.push('Mezi izolací a obkladem ponechte provětrávanou mezeru min. 40 mm.');
+      if (cover.parts.length > 1) res.notes.push('Izolaci klaďte ve dvou vrstvách s vystřídanými spárami.');
     } else {
       res.notes.push('Ostatní složky systému ETICS (lepidlo, hmoždinky – orientačně 6–8 ks/m², výztužná síťovina, omítka) volte v rámci jednoho certifikovaného systému.');
       res.notes.push('Minerální vata je nehořlavá (A1) a paropropustná – vhodná i pro výškové budovy a požární pásy.');
     }
-    if (!ok) res.warnings.push('Cílové hodnoty nelze dosáhnout jednou vrstvou maximální tloušťky – kontaktujte technickou podporu.');
+    if (!ok) res.warnings.push('Cílové hodnoty nelze dosáhnout dostupnými tloušťkami – kontaktujte technickou podporu.');
     return res;
   }
 
-  function recommendAcoustic(item) {
-    const pid = 'akustikboard';
+  function recommendAcoustic(item, prio) {
+    const pid = C.PRIORITIES[prio].acoustic[0];
     const p = C.PRODUCTS[pid];
     const profile = num(item.profile, 75);
     const fill = bestFill(p.thicknesses, profile, 1) || { parts: [p.thicknesses[0]], total: p.thicknesses[0] };
     const res = { U: null, ok: true, layers: [], qtyLayers: [], notes: [], warnings: [] };
     res.layers.push({ name: `Do profilů CW ${profile}`, product: pid, parts: fill.parts, total: fill.total, f: 0 });
     res.qtyLayers.push({ product: pid, t: fill.total, factor: 1 });
-    if (fill.total < profile) res.notes.push(`Akustik Board se v tloušťce ${profile} mm nevyrábí – použijte ${fill.total} mm, zbytek dutiny zůstane jako vzduchová mezera.`);
+    if (fill.total < profile) res.notes.push(`${p.name} se v tloušťce ${profile} mm nevyrábí – použijte ${fill.total} mm, zbytek dutiny zůstane jako vzduchová mezera.`);
     res.notes.push('Pro nejlepší zvukovou izolaci vyplňte celou dutinu příčky a použijte dvojité opláštění sádrokartonem.');
     res.notes.push('Obvodové profily podlepte pružnou těsnicí páskou – omezíte přenos zvuku konstrukcí.');
     return res;
@@ -262,8 +269,8 @@
     const target = type.target ? C.U_TARGETS[type.target][levelKey] : null;
 
     let res;
-    if (type.engine === 'acoustic') res = recommendAcoustic(item);
-    else if (type.engine === 'masonry') res = recommendMasonry(item, target);
+    if (type.engine === 'acoustic') res = recommendAcoustic(item, prio);
+    else if (type.engine === 'masonry') res = recommendMasonry(item, target, prio);
     else if (type.engine === 'loose') res = item.walkable ? recommendFramed(item, target, prio) : recommendLoose(item, target, prio);
     else res = recommendFramed(item, target, prio);
     if (!res) return null;
@@ -283,9 +290,9 @@
     res.acc = [];
     if (res.needsVaporBarrier && geo.area > 0) {
       const foil = geo.area * 1.15;
-      const tape = geo.area / 1.4 + geo.windows * 4.5;
+      const tape = geo.area / 1.85 + geo.windows * 4.5;
       res.acc.push({ id: 'lds100', need: foil });
-      res.acc.push({ id: 'soliplan', need: tape });
+      res.acc.push({ id: 'solifit', need: tape });
       if (geo.perimeter > 0) res.acc.push({ id: 'solimur', need: geo.perimeter });
     }
     if (geo.area <= 0) res.warnings.push('Zadejte rozměry – plocha konstrukce je zatím nulová.');
@@ -307,7 +314,8 @@
     const insulation = [...map.values()].map((e) => {
       const p = C.PRODUCTS[e.product];
       const per = p.packM2[e.t] || 1;
-      return { ...e, perPack: per, packs: Math.ceil(e.m2 / per - 1e-9), m3: e.m2 * e.t / 1000 };
+      const packs = Math.ceil(e.m2 / per - 1e-9);
+      return { ...e, perPack: per, packs, m3: e.m2 * e.t / 1000, price: packs * per * (p.priceM2[e.t] || 0) };
     }).sort((a, b) => a.product.localeCompare(b.product) || b.t - a.t);
 
     const accMap = new Map();
@@ -317,10 +325,12 @@
     }
     const accessories = [...accMap.entries()].map(([id, need]) => {
       const a = C.ACCESSORIES[id];
-      return { id, need, qty: Math.ceil(need / a.perUnit - 1e-9) };
+      const qty = Math.ceil(need / a.perUnit - 1e-9);
+      return { id, need, qty, price: qty * a.price };
     });
     const totalArea = results.reduce((s, r) => s + (r ? r.area : 0), 0);
-    return { insulation, accessories, totalArea, totalPacks: insulation.reduce((s, l) => s + l.packs, 0) };
+    const price = insulation.reduce((s, l) => s + l.price, 0) + accessories.reduce((s, a) => s + a.price, 0);
+    return { insulation, accessories, totalArea, price, totalPacks: insulation.reduce((s, l) => s + l.packs, 0) };
   }
 
   const api = { recommend, aggregate, geometry, bestFill, bestCover, uFramed, uHomogeneous, num, round };

@@ -5,6 +5,7 @@ const ctx = { level: 'doporucena', priority: 'vyvazeny' };
 
 assert.deepStrictEqual(K.bestFill([60, 80, 100, 120, 140, 160], 170).total, 160);
 assert.deepStrictEqual(K.bestCover([50, 100, 140], 185).parts, [140, 50]);
+assert.deepStrictEqual(K.bestCover([50, 80, 140], 125).parts, [140]);
 
 const roof = K.recommend({ type: 'sikma', mode: 'plocha', area: 100, frameDepth: 160, frameWidth: 80, frameSpacing: 900, maxExtra: 100 }, ctx);
 assert.ok(roof.ok && roof.U <= 0.16, 'střecha splní doporučenou hodnotu');

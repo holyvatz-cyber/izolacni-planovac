@@ -15,19 +15,21 @@ Stačí otevřít `index.html` v prohlížeči. Aplikace nemá build krok ani z�
 - **Ukládání:** projekt se ukládá v prohlížeči. Aplikace funguje i na mobilu a podporuje tmavý režim.
 
 ## Produktová data
-`js/catalog.js` obsahuje λD a obsahy balení podle oficiálních produktových stránek knauf.com a listingů DEK (stav 11/2026). U každého produktu je uveden zdroj (`source`).
+Data v `js/catalog.js` pocházejí z **Ceníku stavebních izolací Knauf Insulation ver. 07/2026** (platnost od 1. 5. 2026) a z technických listů výrobce. U každého produktu katalog uvádí λD, dostupné tloušťky, m² v balení a cenu v Kč/m² bez DPH. Při vydání nového ceníku stačí přepsat tabulky `v: { tloušťka: [m²/balení, Kč/m²] }`.
 
-| Produkt | λD | Tloušťky (mm) | Ověřeno pro CZ |
+| Použití | Nejtenčí vrstva | Vyvážené | Nejnižší cena |
 |---|---|---|---|
-| Unifit 032 | 0,032 | 60–200 | ano |
-| Unifit 035 | 0,035 | 50–240 | ano |
-| NatuRoll Pro | 0,039 | 50–200 | ano |
-| FKD-S Thermal (1200 × 400) | 0,035 | 50–200 | ano |
-| Akustik Board (1250 × 625) | 0,037 | 50, 60, 100 | ano |
-| NaturBoard VENTI | 0,035 | 50, 100 | **ne** – jen mezinárodní technický list |
-| Homeseal LDS 100 / Soliplan / Solimur | – | role 100 m² / 40 m / 8–12 m | ano |
+| Šikmá střecha (mezi a pod krokve) | Unifit 032 | Unifit 035 | Unifit 037 |
+| Strop pod půdou | Unifit 033 | NatuRoll Pro | NatuRoll Plus |
+| Dřevostavba | Unifit 032 | Mineral Plus HB 034 | Unifit 037 |
+| Kontaktní fasáda | FKD N Thermal | FKD S Thermal | FKD N Thermal |
+| Provětrávaná fasáda | VENTI PRO | Mineral Plus KP 034 | MPN Plus 037 |
+| Příčky | Akustik Board | Akustik Board | Akustik Roll |
+| Vzduchotěsnost | Homeseal LDS 100, LDS Solifit, LDS Solimur | | |
 
-Produkty s `verified: false` dostanou ve výsledku upozornění, ať zákazník dostupnost ověří u prodejce. Data pravidelně porovnávejte s aktuálními technickými listy. Na trhu se objevují i jiné formáty balení, například FKD-S Thermal ve formátu 1000 × 600 mm u některých prodejců.
+Pokud první produkt v řadě cíl nesplní (např. kvůli výšce krokví), plánovač automaticky zkusí další, výkonnější produkt.
+
+Ceny v aplikaci jsou orientační podle ceníku. Zákazník vidí cenu bez DPH i s DPH 21 % a upozornění, že skutečné ceny u prodejců se liší.
 
 V `BRAND.contactUrl` nastavte odkaz pro tlačítko „Poptat u prodejce“.
 
