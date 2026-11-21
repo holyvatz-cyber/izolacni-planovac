@@ -21,3 +21,15 @@ assert.ok(!fail.ok && fail.warnings.length, 'nedosažitelný cíl hlásí varov�
 const agg = K.aggregate([roof, wall]);
 agg.insulation.forEach((l) => assert.ok(l.packs * l.perPack >= l.m2 - 1e-9));
 console.log('Všechny testy prošly.');
+
+// ploché střechy a podlahy
+const flat = K.recommend({ type: 'plocha', mode: 'rozmery', len: 12, wid: 10, deck: 'zb', use: 'nepochozi', fixing: 'kotvena' }, ctx);
+assert.ok(flat.ok && flat.U <= 0.16);
+const up = flat.layers[0].total; const total = flat.layers.reduce((s, l) => s + l.total, 0);
+assert.ok(up >= 60 && up >= total / 3 - 10, 'horní vrstva min. 60 mm a ~1/3 tloušťky');
+assert.ok(flat.acc.some((a) => a.id === 'lds35'));
+const floor = K.recommend({ type: 'podlaha', mode: 'rozmery', len: 5, wid: 4, floorType: 'beton', load: '200', slab: '160' }, ctx);
+assert.strictEqual(floor.layers[0].product, 'ptn');
+assert.strictEqual(floor.impact.lnw, 48);
+assert.ok(floor.acc.some((a) => a.id === 'edge100' && Math.abs(a.need - 18.9) < 0.01));
+console.log('Testy plochých střech a podlah prošly.');

@@ -100,6 +100,48 @@
       desc: 'Tepelná a akustická izolace v roli šíře 625 mm do příček.',
       v: { 40: [21.75, 83.52], 50: [17.5, 104.4], 60: [14.5, 125.28], 75: [11.5, 156.6], 80: [11.0, 167.04], 100: [8.75, 208.8] },
     },
+    /* --- ploché střechy: desky 1200 × 2000 mm (2,4 m²), prodej po deskách / paletách --- */
+    srbase: {
+      name: 'SmartRoof Base', lambda: 0.035, form: 'deska', packUnit: 'deska', material: 'kamenná',
+      desc: 'Spodní vrstva izolace plochých střech, CS(10) 30 kPa.',
+      v: { 40: [2.4, 272], 50: [2.4, 340], 60: [2.4, 408], 80: [2.4, 544], 100: [2.4, 680], 120: [2.4, 816], 140: [2.4, 952], 150: [2.4, 1020], 160: [2.4, 1088], 180: [2.4, 1224], 200: [2.4, 1360] },
+    },
+    srthermal: {
+      name: 'SmartRoof Thermal', lambda: 0.036, form: 'deska', packUnit: 'deska', material: 'kamenná',
+      desc: 'Spodní vrstva izolace plochých střech, CS(10) 50 kPa.',
+      v: { 40: [2.4, 332], 50: [2.4, 415], 60: [2.4, 498], 80: [2.4, 640], 100: [2.4, 800], 120: [2.4, 960], 140: [2.4, 1120], 150: [2.4, 1200], 160: [2.4, 1280], 180: [2.4, 1440] },
+    },
+    srnorm: {
+      name: 'SmartRoof Norm', lambda: 0.037, form: 'deska', packUnit: 'deska', material: 'kamenná',
+      desc: 'Horní krycí vrstva plochých střech, CS(10) 60 kPa.',
+      v: { 40: [2.4, 352], 50: [2.4, 440], 60: [2.4, 528], 80: [2.4, 704], 100: [2.4, 880], 120: [2.4, 1056], 140: [2.4, 1232], 150: [2.4, 1320], 160: [2.4, 1408], 180: [2.4, 1584] },
+    },
+    srtop: {
+      name: 'SmartRoof Top', lambda: 0.038, form: 'deska', packUnit: 'deska', material: 'kamenná',
+      desc: 'Horní krycí vrstva pro občasně pochozí ploché střechy, CS(10) 70 kPa.',
+      v: { 40: [2.4, 380], 50: [2.4, 475], 60: [2.4, 546], 70: [2.4, 637], 80: [2.4, 728], 100: [2.4, 910], 120: [2.4, 1092], 140: [2.4, 1274], 150: [2.4, 1365], 160: [2.4, 1456], 180: [2.4, 1638], 200: [2.4, 1820] },
+    },
+    /* --- podlahy: kročejové izolace --- */
+    ptn: {
+      name: 'PTN', lambda: 0.035, form: 'deska', packUnit: 'balík', material: 'kamenná',
+      desc: 'Kročejová izolace pod betonové plovoucí podlahy, užitné zatížení ≤ 200 kg/m².',
+      v: { 20: [9.6, 121.62], 25: [8.4, 152.03], 30: [6.0, 182.43], 40: [4.8, 243.24], 50: [3.0, 304.05] },
+    },
+    pte: {
+      name: 'PTE', lambda: 0.036, form: 'deska', packUnit: 'balík', material: 'kamenná',
+      desc: 'Kročejová izolace pod anhydritové a betonové podlahy, užitné zatížení ≤ 400 kg/m².',
+      v: { 20: [9.6, 161.64], 30: [6.0, 242.46], 40: [4.8, 323.28], 50: [3.0, 404.1] },
+    },
+    pts: {
+      name: 'PTS', lambda: 0.036, form: 'deska', packUnit: 'balík', material: 'kamenná',
+      desc: 'Kročejová izolace pod suché i lité podlahy, užitné zatížení ≤ 500 kg/m².',
+      v: { 20: [9.6, 183.82], 30: [4.8, 275.73], 40: [4.8, 367.64], 50: [3.0, 459.55] },
+    },
+    tpt03: {
+      name: 'TPT 03', lambda: 0.032, form: 'deska', packUnit: 'balík', material: 'skelná',
+      desc: 'Kročejová izolace s mimořádnými akustickými vlastnostmi pod betonové a anhydritové podlahy.',
+      v: { 20: [15.0, 294.22], 30: [9.75, 441.33] },
+    },
   };
   Object.values(PRODUCTS).forEach((p) => {
     p.thicknesses = Object.keys(p.v).map(Number).sort((a, b) => a - b);
@@ -110,6 +152,9 @@
   const ACCESSORIES = {
     lds100: { name: 'Homeseal LDS 100', desc: 'Parozábrana sd = 100 m, role 2 × 50 m (přesahy 150 mm)', unit: 'role', perUnit: 100, perLabel: 'm²', price: 4200 },
     solifit: { name: 'Homeseal LDS Solifit', desc: 'Páska 60 mm pro vzduchotěsné spoje fólií, role 25 m', unit: 'role', perUnit: 25, perLabel: 'm', price: 485 },
+    lds35: { name: 'Homeseal LDS 35 FixPlus', desc: 'Parozábrana pro ploché střechy s lepicími páskami, role 3 × 50 m', unit: 'role', perUnit: 150, perLabel: 'm²', price: 4200 },
+    edge60: { name: 'Okrajový pásek 15 × 60 mm', desc: 'Oddělení plovoucí podlahy od stěn, kusy 1 m', unit: 'm', perUnit: 1, perLabel: 'm', price: 48 },
+    edge100: { name: 'Okrajový pásek 15 × 100 mm', desc: 'Oddělení plovoucí podlahy od stěn, kusy 1 m', unit: 'm', perUnit: 1, perLabel: 'm', price: 54 },
     solimur: { name: 'Homeseal LDS Solimur', desc: 'Tmel pro napojení fólie na zdivo, 310 ml (cca 6 m / kartuše)', unit: 'kartuše', perUnit: 6, perLabel: 'm', price: 154 },
   };
 
@@ -133,16 +178,19 @@
       label: 'Nejtenčí vrstva', sub: 'Maximum izolace na minimum místa',
       cavity: ['unifit032', 'unifit033', 'unifit035'], wall: ['unifit032', 'hb034', 'unifit035'], loose: ['unifit033', 'unifit035', 'naturollpro'],
       etics: ['fkdnthermal', 'fkdsthermal'], venti: ['ventipro', 'kp034'], acoustic: ['akustikboard', 'decibelplus'],
+      flatLower: 'srbase', floor: 'akustika',
     },
     vyvazeny: {
       label: 'Vyvážené', sub: 'Poměr cena / výkon',
       cavity: ['unifit035', 'unifit033', 'unifit032'], wall: ['hb034', 'unifit035', 'unifit032'], loose: ['naturollpro', 'naturollplus', 'unifit035'],
       etics: ['fkdsthermal', 'fkdnthermal'], venti: ['kp034', 'ventipro'], acoustic: ['akustikboard', 'akustikroll'],
+      flatLower: 'srthermal', floor: 'standard',
     },
     cena: {
       label: 'Nejnižší cena', sub: 'Úsporné řešení',
       cavity: ['unifit037', 'unifit035', 'unifit033', 'unifit032'], wall: ['unifit037', 'unifit035', 'hb034'], loose: ['naturollplus', 'naturollpro'],
       etics: ['fkdnthermal', 'fkdsthermal'], venti: ['mpnplus037', 'kp034', 'ventipro'], acoustic: ['akustikroll', 'decibelplus'],
+      flatLower: 'srbase', floor: 'standard',
     },
   };
 
@@ -162,6 +210,32 @@
     tramovy: { label: 'Dřevěný trámový strop s podbitím', R: 0.6, wooden: true },
     beton: { label: 'Železobetonový strop / panel', R: 0.15, wooden: false },
     keramicky: { label: 'Keramický strop (Hurdis, MIAKO)', R: 0.35, wooden: false },
+  };
+
+  const FLAT_DECKS = {
+    zb: { label: 'Železobetonová deska', R: 0.12 },
+    trapez: { label: 'Trapézový plech', R: 0 },
+    drevo: { label: 'Dřevěné bednění / trámy', R: 0.2 },
+  };
+
+  const FLOOR_TYPES = {
+    beton: { label: 'Betonová (cementová) litá podlaha' },
+    anhydrit: { label: 'Anhydritová litá podlaha' },
+    sucha: { label: 'Suchá montovaná podlaha (OSB, sádrovlákno)' },
+  };
+  const FLOOR_LOADS = {
+    200: { label: 'Obytné prostory (do 200 kg/m²)' },
+    400: { label: 'Kanceláře, obchody (do 400 kg/m²)' },
+    500: { label: 'Vyšší zatížení (do 500 kg/m²)' },
+  };
+  /* Orientační L'n,w [dB] pro ŽB strop (brožura Knauf Insulation Podlahy 07/2019),
+   * index sloupce = tloušťka stropní desky 120…240 mm po 20 mm. */
+  const IMPACT = {
+    slabs: [120, 140, 160, 180, 200, 220, 240],
+    none: [79, 77, 75, 73, 71, 70, 69],
+    ptn: { 20: [54, 52, 50, 48, 46, 45, 44], 30: [53, 51, 49, 47, 45, 44, 43], 40: [52, 50, 48, 46, 44, 43, 42], 50: [51, 49, 48, 45, 43, 42, 41] },
+    pte: { 20: [55, 53, 51, 49, 47, 46, 45], 30: [54, 52, 50, 48, 46, 45, 44], 40: [53, 51, 49, 47, 45, 44, 43], 50: [52, 50, 48, 46, 44, 43, 42] },
+    pts: { 20: [57, 55, 53, 51, 49, 48, 47], 30: [55, 53, 51, 49, 47, 46, 45], 40: [54, 52, 50, 48, 46, 45, 44], 50: [53, 51, 49, 47, 45, 44, 43] },
   };
 
   const TYPES = {
@@ -185,13 +259,21 @@
       label: 'Stěna dřevostavby', short: 'Mezi sloupky',
       icon: 'frame', target: 'wallExt', engine: 'framed',
     },
+    plocha: {
+      label: 'Plochá střecha', short: 'Dvouvrstvá skladba',
+      icon: 'flat', target: 'roof', engine: 'flat',
+    },
+    podlaha: {
+      label: 'Plovoucí podlaha', short: 'Kročejová izolace',
+      icon: 'floor', target: null, engine: 'floor',
+    },
     pricka: {
       label: 'Akustická příčka / předstěna', short: 'Sádrokarton',
       icon: 'partition', target: null, engine: 'acoustic',
     },
   };
 
-  const api = { PRICE_LIST, VAT, BRAND, PRODUCTS, ACCESSORIES, LEVELS, U_TARGETS, PRIORITIES, EXISTING_WALLS, EXISTING_CEILINGS, TYPES };
+  const api = { FLAT_DECKS, FLOOR_TYPES, FLOOR_LOADS, IMPACT, PRICE_LIST, VAT, BRAND, PRODUCTS, ACCESSORIES, LEVELS, U_TARGETS, PRIORITIES, EXISTING_WALLS, EXISTING_CEILINGS, TYPES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Catalog = api;
 })(typeof window !== 'undefined' ? window : globalThis);

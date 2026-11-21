@@ -93,6 +93,8 @@
         const plane = num(item.rafterLen) * num(item.roofLen);
         return { area: Math.max(0, plane * sides - w * ROOF_WINDOW_M2), perimeter: sides * 2 * (num(item.rafterLen) + num(item.roofLen)), windows: w };
       }
+      case 'plocha':
+      case 'podlaha':
       case 'strop':
         return { area: num(item.len) * num(item.wid), perimeter: 2 * (num(item.len) + num(item.wid)), windows: 0 };
       case 'etics':
@@ -259,6 +261,76 @@
     return res;
   }
 
+  function recommendFlat(item, target, prio) {
+    const deck = C.FLAT_DECKS[item.deck] || C.FLAT_DECKS.zb;
+    const walk = item.use === 'pochozi';
+    const anchored = item.fixing !== 'pritizena';
+    const dU = anchored ? 0.015 : 0;
+    const lowId = C.PRIORITIES[prio].flatLower; const upId = walk ? 'srtop' : 'srnorm';
+    const low = C.PRODUCTS[lowId]; const up = C.PRODUCTS[upId];
+    const rsi = 0.10; const rse = 0.04;
+    const calcU = (tl, tu) => uHomogeneous({ rsi, rse, rOther: deck.R, layers: [{ t: tl, lambda: low.lambda }, { t: tu, lambda: up.lambda }] }) + dU;
+    const price = (parts, tu) => parts.reduce((s2, t) => s2 + low.priceM2[t], 0) + up.priceM2[tu];
+    const cands = [];
+    for (const tu of up.thicknesses.filter((t) => t >= 60)) {
+      for (const lc of combos(low.thicknesses, 2)) {
+        const total = lc.total + tu;
+        if (tu < total / 3 - 10) continue;
+        cands.push({ lower: lc.parts, tl: lc.total, tu, total, U: calcU(lc.total, tu), cost: price(lc.parts, tu) });
+      }
+    }
+    const okC = cands.filter((c) => c.U <= target);
+    let pick; let ok = true;
+    if (okC.length) {
+      const minT = Math.min(...okC.map((c) => c.total));
+      pick = okC.filter((c) => c.total <= minT + 20).sort((a, b) => a.lower.length - b.lower.length || a.cost - b.cost)[0];
+    } else { pick = cands.sort((a, b) => a.U - b.U)[0]; ok = false; }
+    const res = { U: pick.U, ok, layers: [], qtyLayers: [], notes: [], warnings: [], acc: [] };
+    res.layers.push({ name: 'Horní krycí vrstva', product: upId, parts: [pick.tu], total: pick.tu, f: 0 });
+    res.layers.push({ name: pick.lower.length > 1 ? 'Spodní vrstva – dvě desky na vazbu' : 'Spodní vrstva', product: lowId, parts: pick.lower, total: pick.tl, f: 0 });
+    res.qtyLayers.push({ product: upId, t: pick.tu, factor: 1 });
+    pick.lower.forEach((t) => res.qtyLayers.push({ product: lowId, t, factor: 1 }));
+    res.notes.push(`Horní vrstva z tužšího materiálu (${up.name}) tvoří cca třetinu tloušťky, min. 60 mm – doporučení Knauf Insulation.`);
+    res.notes.push(walk ? 'Skladba je vhodná pro občasně pochozí střechu (údržba, servis).' : 'Skladba je určena pro nepochozí střechu.');
+    if (anchored) res.notes.push('Výpočet zahrnuje přirážku na tepelné mosty mechanického kotvení (ΔU = 0,015).');
+    res.notes.push('Spádovou vrstvu (desky SmartRoof Top 1 CTF / 2 CTF) navrhuje Knauf Insulation individuálně včetně kladečského plánu – plánovač ji nezahrnuje.');
+    if (item.deck === 'trapez') res.notes.push('Na trapézovém plechu musí spodní deska přemostit vlny plechu; zvažte také výplně trapézových plechů.');
+    res.notes.push('Hydroizolaci (asfaltové pásy nebo PVC fólii) a kotevní prvky dodává pokrývač.');
+    if (!ok) res.warnings.push('Cílové hodnoty nelze dosáhnout dostupnými tloušťkami – kontaktujte technickou podporu Knauf Insulation.');
+    res.extraAcc = [{ id: 'lds35', perArea: 1.1 }];
+    return res;
+  }
+
+  function recommendFloor(item, prio) {
+    const load = num(item.load, 200);
+    const type = item.floorType || 'beton';
+    const heavy = type !== 'sucha';
+    let pid; let t;
+    if (!heavy) { pid = 'pts'; t = prio === 'vykon' ? 30 : 20; }
+    else if (C.PRIORITIES[prio].floor === 'akustika') { pid = 'tpt03'; t = 30; }
+    else if (type === 'anhydrit') { pid = load <= 400 ? 'pte' : 'pts'; t = 40; }
+    else { pid = load <= 200 ? 'ptn' : load <= 400 ? 'pte' : 'pts'; t = 40; }
+    const p = C.PRODUCTS[pid];
+    const res = { U: null, ok: true, layers: [], qtyLayers: [], notes: [], warnings: [], acc: [] };
+    res.layers.push({ name: heavy ? 'Pod litou roznášecí vrstvu' : 'Pod suchou podlahu', product: pid, parts: [t], total: t, f: 0 });
+    res.qtyLayers.push({ product: pid, t, factor: 1 });
+    const slab = num(item.slab, 0);
+    const table = C.IMPACT[pid];
+    if (slab > 0 && table && table[t]) {
+      const i = C.IMPACT.slabs.reduce((bi, v, k) => (Math.abs(v - slab) < Math.abs(C.IMPACT.slabs[bi] - slab) ? k : bi), 0);
+      const lnw = table[t][i];
+      res.impact = { lnw, without: C.IMPACT.none[i], slab: C.IMPACT.slabs[i] };
+      res.notes.push(`Orientační vážená hladina kročejového hluku L'n,w ≈ ${lnw} dB (strop bez kročejové izolace ≈ ${C.IMPACT.none[i]} dB) pro ŽB desku ${C.IMPACT.slabs[i]} mm.`);
+    }
+    if (pid === 'tpt03') res.notes.push('TPT 03 má nejnižší dynamickou tuhost (SD 9 MN/m³) – nejlepší útlum kročejového hluku v nejmenší tloušťce.');
+    if (heavy) res.notes.push('Roznášecí deska z armovaného betonu nebo anhydritu musí mít tloušťku min. 50 mm; separační PE fólii slepte do celistvé „vany“.');
+    else res.notes.push('Pro suché podlahy obvykle postačí 20 mm kročejové izolace; dílce roznášecí vrstvy spojujte lepeným spojem pero/drážka.');
+    res.notes.push('Kročejovou izolaci klaďte vždy jen v jedné vrstvě na rovný a suchý podklad – nahradit 40 mm dvěma vrstvami po 20 mm nelze.');
+    res.notes.push('Po obvodu místnosti oddělte podlahu okrajovým páskem z minerální vlny.');
+    res.edge = heavy ? 'edge100' : 'edge60';
+    return res;
+  }
+
   /* ---------- hlavní funkce ---------- */
   function recommend(item, ctx) {
     const type = C.TYPES[item.type];
@@ -270,6 +342,8 @@
 
     let res;
     if (type.engine === 'acoustic') res = recommendAcoustic(item, prio);
+    else if (type.engine === 'flat') res = recommendFlat(item, target, prio);
+    else if (type.engine === 'floor') res = recommendFloor(item, prio);
     else if (type.engine === 'masonry') res = recommendMasonry(item, target, prio);
     else if (type.engine === 'loose') res = item.walkable ? recommendFramed(item, target, prio) : recommendLoose(item, target, prio);
     else res = recommendFramed(item, target, prio);
@@ -288,6 +362,8 @@
     });
 
     res.acc = [];
+    (res.extraAcc || []).forEach((a) => { if (geo.area > 0) res.acc.push({ id: a.id, need: geo.area * a.perArea }); });
+    if (res.edge && geo.perimeter > 0) res.acc.push({ id: res.edge, need: geo.perimeter * 1.05 });
     if (res.needsVaporBarrier && geo.area > 0) {
       const foil = geo.area * 1.15;
       const tape = geo.area / 1.85 + geo.windows * 4.5;

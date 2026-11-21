@@ -10,6 +10,8 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n, d = 1) => Number(n).toLocaleString('cs-CZ', { minimumFractionDigits: d, maximumFractionDigits: d });
   const fmtU = (n) => fmt(n, 2);
+  const FORMS = { role: ['role', 'role', 'rolí'], 'balík': ['balík', 'balíky', 'balíků'], deska: ['deska', 'desky', 'desek'], 'kartuše': ['kartuše', 'kartuše', 'kartuší'] };
+  const unitWord = (u, n) => { const f = FORMS[u]; if (!f) return u; return n === 1 ? f[0] : n >= 2 && n <= 4 ? f[1] : f[2]; };
   const kc = (n) => `${Math.round(n).toLocaleString('cs-CZ')} Kč`;
   const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -19,6 +21,8 @@
     wall: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="6" width="16" height="28"/><path d="M7 13h16M7 20h16M7 27h16M15 6v7M11 13v7M19 13v7M15 20v7M11 27v7M19 27v7"/><rect x="25" y="6" width="7" height="28" stroke="var(--accent)"/></svg>',
     venti: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="6" width="13" height="28"/><rect x="20" y="6" width="7" height="28" stroke="var(--accent)"/><path d="M32 6v28M32 10h3M32 18h3M32 26h3"/></svg>',
     frame: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h28v28H6z"/><path d="M15 6v28M25 6v28"/><path d="M8 10h5M8 16h5M8 22h5M8 28h5M17 10h6M17 16h6M17 22h6M17 28h6M27 10h5M27 16h5M27 22h5M27 28h5" stroke="var(--accent)"/></svg>',
+    flat: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 14h30"/><rect x="5" y="16" width="30" height="5" stroke="var(--accent)"/><rect x="5" y="21" width="30" height="5" stroke="var(--accent)"/><path d="M5 28h30M8 28v8M32 28v8"/></svg>',
+    floor: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 30h30"/><rect x="5" y="24" width="30" height="3" stroke="var(--accent)"/><rect x="5" y="17" width="30" height="6"/><path d="M6 17v-9M34 17v-9"/><path d="M14 12l2 3M22 12l2 3" stroke="var(--accent)"/></svg>',
     partition: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v30M28 5v30"/><path d="M15 9c3 2 7-2 10 0M15 15c3 2 7-2 10 0M15 21c3 2 7-2 10 0M15 27c3 2 7-2 10 0" stroke="var(--accent)"/></svg>',
   };
 
@@ -29,6 +33,8 @@
     etics: { name: 'Fasáda', mode: 'rozmery', perimeter: '40', height: '6', openings: '30', area: '200', wall: 'cp450' },
     venti: { name: 'Provětrávaná fasáda', mode: 'rozmery', perimeter: '40', height: '6', openings: '30', area: '200', wall: 'cp450' },
     drevostavba: { name: 'Obvodová stěna', mode: 'rozmery', len: '36', height: '2.7', openings: '22', area: '75', frameDepth: '160', frameWidth: '60', frameSpacing: '625', maxExtra: '60' },
+    plocha: { name: 'Plochá střecha', mode: 'rozmery', len: '12', wid: '10', area: '120', deck: 'zb', use: 'nepochozi', fixing: 'kotvena' },
+    podlaha: { name: 'Podlaha – obývák', mode: 'rozmery', len: '6', wid: '4.5', area: '27', floorType: 'beton', load: '200', slab: '200' },
     pricka: { name: 'Příčka', mode: 'rozmery', len: '4', height: '2.6', doors: '1', area: '10', profile: '75' },
   };
 
@@ -81,6 +87,22 @@
       { k: 'profile', label: 'Šířka profilu CW', type: 'select', options: [['50', 'CW 50'], ['75', 'CW 75'], ['100', 'CW 100']] },
     ],
   };
+  FIELDS.plocha = [
+    { k: 'len', label: 'Délka střechy', unit: 'm', mode: 'rozmery' },
+    { k: 'wid', label: 'Šířka střechy', unit: 'm', mode: 'rozmery' },
+    { k: 'area', label: 'Plocha střechy', unit: 'm²', mode: 'plocha' },
+    { k: 'deck', label: 'Nosná konstrukce', type: 'select', options: optionsFrom(C.FLAT_DECKS) },
+    { k: 'use', label: 'Využití střechy', type: 'select', options: [['nepochozi', 'Nepochozí'], ['pochozi', 'Občasně pochozí (údržba, FVE servis)']] },
+    { k: 'fixing', label: 'Stabilizace skladby', type: 'select', options: [['kotvena', 'Mechanicky kotvená'], ['pritizena', 'Přitížená (kačírek, zelená střecha)']] },
+  ];
+  FIELDS.podlaha = [
+    { k: 'len', label: 'Délka místnosti', unit: 'm', mode: 'rozmery' },
+    { k: 'wid', label: 'Šířka místnosti', unit: 'm', mode: 'rozmery' },
+    { k: 'area', label: 'Plocha podlahy', unit: 'm²', mode: 'plocha', hint: 'Obvod pro okrajový pásek odhadneme.' },
+    { k: 'floorType', label: 'Typ podlahy', type: 'select', options: optionsFrom(C.FLOOR_TYPES), wide: true },
+    { k: 'load', label: 'Užitné zatížení', type: 'select', options: optionsFrom(C.FLOOR_LOADS) },
+    { k: 'slab', label: 'Tloušťka ŽB stropu', unit: 'mm', hint: 'Pro odhad kročejového hluku; ponechte prázdné, pokud nevíte.' },
+  ];
   FIELDS.venti = FIELDS.etics;
 
   /* ---------- stav ---------- */
@@ -216,6 +238,32 @@
       });
       g += `<text x="${W - 10}" y="${y - 6}" text-anchor="end" font-size="9" fill="var(--ink-3)">nevytápěná půda</text>`;
       g += `<text x="${W - 10}" y="${H - 1}" text-anchor="end" font-size="9" fill="var(--ink-3)">vytápěná místnost</text>`;
+    } else if (engine === 'flat') {
+      const upL = res.layers[0]; const loL = res.layers[1];
+      const total = upL.total + loL.total; const s = Math.min(0.3, 100 / total);
+      const deck = 18; let y = H - 8 - deck;
+      if (res.item.deck === 'trapez') {
+        let d = `M8 ${y + deck}`; for (let x = 8; x < W - 8; x += 32) d += ` L${x} ${y} L${x + 14} ${y} L${x + 16} ${y + deck} L${x + 30} ${y + deck}`;
+        g += `<path d="${d}" fill="none" stroke="#7d8790" stroke-width="2"/>`;
+      } else g += `<rect x="8" y="${y}" width="${W - 16}" height="${deck}" fill="url(#conc)"/>`;
+      g += `<line x1="8" y1="${y - 1}" x2="${W - 8}" y2="${y - 1}" stroke="var(--brand)" stroke-width="2"/>`;
+      loL.parts.slice().reverse().forEach((t) => { const h = t * s; y -= h; g += `<rect x="8" y="${y}" width="${W - 16}" height="${h}" fill="${wool}" stroke="var(--wool-line)" stroke-width=".8"/>`; });
+      const hu = upL.total * s; y -= hu;
+      g += `<rect x="8" y="${y}" width="${W - 16}" height="${hu}" fill="var(--wool-line)" opacity=".85"/>`;
+      g += `<rect x="8" y="${y - 4}" width="${W - 16}" height="4" fill="#3b4752"/>`;
+      g += `<text x="${W - 10}" y="${y - 8}" text-anchor="end" font-size="9" fill="var(--ink-3)">hydroizolace</text>`;
+    } else if (engine === 'floor') {
+      const t = res.layers[0].total; const heavy = res.item.floorType !== 'sucha';
+      let y = H - 30;
+      g += `<rect x="8" y="${y}" width="${W - 16}" height="22" fill="url(#conc)"/>`;
+      const hi = t * 0.9; y -= hi;
+      g += `<rect x="20" y="${y}" width="${W - 28}" height="${hi}" fill="${wool}" stroke="var(--wool-line)" stroke-width=".8"/>`;
+      const hs = heavy ? 34 : 16; y -= hs;
+      g += `<rect x="20" y="${y}" width="${W - 28}" height="${hs}" fill="${heavy ? '#b9c0c6' : 'var(--wood)'}"/>`;
+      g += `<rect x="20" y="${y - 5}" width="${W - 28}" height="5" fill="#8a6440" opacity=".7"/>`;
+      g += `<rect x="12" y="${y - 5}" width="6" height="${hi + hs + 5}" fill="${wool}" stroke="var(--wool-line)" stroke-width=".6"/>`;
+      g += `<rect x="8" y="10" width="4" height="${H - 18}" fill="#c97a5a"/>`;
+      g += `<text x="${W - 10}" y="${y - 10}" text-anchor="end" font-size="9" fill="var(--ink-3)">${heavy ? 'nášlapná vrstva · roznášecí deska' : 'suchá podlaha'}</text>`;
     } else if (engine === 'masonry') {
       const total = res.layers[0].total; const s = Math.min(0.42, 90 / total);
       const wW = 70; const x0 = 40;
@@ -290,8 +338,8 @@
     const okCount = withTarget.filter((r) => r.ok).length;
     const m3 = agg.insulation.reduce((s, l) => s + l.m3, 0);
     $('#tiles').innerHTML = [
-      [fmt(agg.totalArea, 0) + ' m²', 'zateplovaná plocha'],
-      [agg.totalPacks, 'balení izolace'],
+      [fmt(agg.totalArea, 0) + ' m²', 'plocha konstrukcí'],
+      [agg.totalPacks, 'balení a desek izolace'],
       [kc(agg.price * (1 + C.VAT)), 'orientační cena vč. DPH'],
       withTarget.length ? [`${okCount}/${withTarget.length}`, 'konstrukcí splňuje cíl'] : [results.length, 'konstrukcí'],
     ].map(([b, s]) => `<div class="tile"><b>${b}</b><span>${s}</span></div>`).join('');
@@ -301,7 +349,7 @@
       const p = C.PRODUCTS[l.product];
       return `<tr><td><div class="pname">${esc(p.name)} · ${l.t} mm</div><div class="pdesc">${esc(p.desc)}</div></td>
         <td class="num">${fmt(l.m2)} m²</td><td class="num">${fmt(l.perPack, 2)} m²/${esc(p.packUnit)}</td>
-        <td class="num"><span class="packs">${l.packs}</span> ${esc(p.packUnit === 'role' ? (l.packs === 1 ? 'role' : 'rolí') : (l.packs === 1 ? 'balík' : 'balíků'))}</td>
+        <td class="num"><span class="packs">${l.packs}</span> ${esc(unitWord(p.packUnit, l.packs))}</td>
         <td class="num">${kc(l.price)}</td></tr>`;
     }).join('');
     if (agg.accessories.length) {
@@ -310,7 +358,7 @@
         const d = C.ACCESSORIES[a.id];
         return `<tr><td><div class="pname">${esc(d.name)}</div><div class="pdesc">${esc(d.desc)}</div></td>
           <td class="num">${fmt(a.need, 0)} ${esc(d.perLabel)}</td><td class="num">${d.perUnit} ${esc(d.perLabel)}/${esc(d.unit)}</td>
-          <td class="num"><span class="packs">${a.qty}</span> ${esc(d.unit)}</td>
+          <td class="num"><span class="packs">${a.qty}</span> ${esc(unitWord(d.unit, a.qty))}</td>
           <td class="num">${kc(a.price)}</td></tr>`;
       }).join('');
     }
@@ -326,8 +374,8 @@
   function shoppingText() {
     if (!lastAgg) return '';
     const out = [`${state.project.name || 'Plánovač zateplení'} – nákupní seznam`, ''];
-    lastAgg.insulation.forEach((l) => { const p = C.PRODUCTS[l.product]; out.push(`${p.name} ${l.t} mm – ${l.packs}× ${p.packUnit} (${fmt(l.m2)} m²)`); });
-    lastAgg.accessories.forEach((a) => { const d = C.ACCESSORIES[a.id]; out.push(`${d.name} – ${a.qty}× ${d.unit}`); });
+    lastAgg.insulation.forEach((l) => { const p = C.PRODUCTS[l.product]; out.push(`${p.name} ${l.t} mm – ${l.packs} ${unitWord(p.packUnit, l.packs)} (${fmt(l.m2)} m²)`); });
+    lastAgg.accessories.forEach((a) => { const d = C.ACCESSORIES[a.id]; out.push(`${d.name} – ${a.qty} ${unitWord(d.unit, a.qty)}`); });
     out.push(`Orientační cena: ${kc(lastAgg.price)} bez DPH (${kc(lastAgg.price * (1 + C.VAT))} vč. DPH) – ${C.PRICE_LIST}`);
     out.push('', 'Konstrukce:');
     state.items.forEach((i) => { const r = K.recommend(i, ctx()); if (r) out.push(`• ${i.name} (${fmt(r.area)} m²): ${r.layers.map((l) => `${C.PRODUCTS[l.product].name} ${l.parts.join('+')} mm`).join(', ')}${r.U != null ? `, U = ${fmtU(r.U)}` : ''}`); });

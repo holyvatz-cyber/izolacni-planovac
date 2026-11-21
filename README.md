@@ -6,7 +6,7 @@ Webová aplikace pro koncové zákazníky. Zákazník zadá konstrukce a rozměr
 Stačí otevřít `index.html` v prohlížeči. Aplikace nemá build krok ani závislosti a dá se nasadit na libovolný statický hosting (třeba GitHub Pages).
 
 ## Co umí
-- **6 typů konstrukcí:** šikmá střecha (mezi a pod krokve), strop pod půdou (pochozí i nepochozí), kontaktní fasáda ETICS, provětrávaná fasáda, stěna dřevostavby a akustická příčka.
+- **8 typů konstrukcí:** šikmá střecha (mezi a pod krokve), strop pod půdou (pochozí i nepochozí), kontaktní fasáda ETICS, provětrávaná fasáda, stěna dřevostavby, plochá střecha, plovoucí podlaha (kročejová izolace) a akustická příčka.
 - **3 úrovně cíle** podle ČSN 73 0540-2: požadovaná, doporučená a pasivní.
 - **3 priority:** nejtenčí vrstva, vyvážené řešení, nejnižší cena.
 - **Výpočet U** podle principu ČSN EN ISO 6946, u dřevěných prvků (krokve, sloupky) jako průměr horní a dolní meze.
@@ -25,7 +25,11 @@ Data v `js/catalog.js` pocházejí z **Ceníku stavebních izolací Knauf Insula
 | Kontaktní fasáda | FKD N Thermal | FKD S Thermal | FKD N Thermal |
 | Provětrávaná fasáda | VENTI PRO | Mineral Plus KP 034 | MPN Plus 037 |
 | Příčky | Akustik Board | Akustik Board | Akustik Roll |
+| Plochá střecha (spodní + horní vrstva) | SmartRoof Base + Norm/Top | SmartRoof Thermal + Norm/Top | SmartRoof Base + Norm/Top |
+| Plovoucí podlaha | TPT 03 (lité), PTS (suché) | PTN / PTE / PTS dle zatížení | PTN / PTE / PTS dle zatížení |
 | Vzduchotěsnost | Homeseal LDS 100, LDS Solifit, LDS Solimur | | |
+
+U plochých střech je horní vrstva tužší deska (Norm u nepochozí, Top u občasně pochozí střechy) o tloušťce zhruba třetiny skladby, nejméně 60 mm. U podlah plánovač odhaduje kročejový hluk L'n,w podle tabulek z brožury Knauf Insulation Podlahy (07/2019).
 
 Pokud první produkt v řadě cíl nesplní (např. kvůli výšce krokví), plánovač automaticky zkusí další, výkonnější produkt.
 
