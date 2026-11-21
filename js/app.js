@@ -106,7 +106,8 @@
   FIELDS.venti = FIELDS.etics;
 
   /* ---------- stav ---------- */
-  const fresh = () => ({ project: { name: '', level: 'doporucena', priority: 'vyvazeny', waste: '' }, items: [], step: 1 });
+  const fresh = () => ({ project: { name: '', level: 'doporucena', priority: 'vyvazeny', waste: '', energy: '' }, items: [], step: 1 });
+  const energyPrice = () => { const n = K.num(state.project.energy, NaN); return Number.isFinite(n) && n > 0 ? n : 2.5; };
   let state = load();
 
   function load() {
@@ -126,6 +127,7 @@
   function renderStep1() {
     $('#project-name').value = state.project.name;
     $('#waste').value = state.project.waste;
+    $('#energy').value = state.project.energy || '';
     const choice = (group, key, item, cur, tag) => `
       <label class="choice"><input type="radio" name="${group}" value="${key}" ${cur === key ? 'checked' : ''}>
         ${tag ? `<span class="tag">${tag}</span>` : ''}<strong>${esc(item.label)}</strong><small>${esc(item.sub)}</small></label>`;
@@ -139,6 +141,20 @@
       <button type="button" class="type-card" data-add="${k}">${ICONS[t.icon]}<strong>${esc(t.label)}</strong><small>${esc(t.short)}</small></button>`).join('');
   }
 
+  const RANGES = {
+    frameDepth: [40, 400, 'mm'], frameWidth: [30, 250, 'mm'], frameSpacing: [300, 1500, 'mm'], maxExtra: [0, 300, 'mm'],
+    slab: [80, 400, 'mm'], windows: [0, 50, 'ks'], doors: [0, 20, 'ks'], sides: [1, 4, ''],
+    rafterLen: [0.5, 30, 'm'], roofLen: [0.5, 100, 'm'], len: [0.3, 200, 'm'], wid: [0.3, 200, 'm'], height: [0.5, 60, 'm'],
+    perimeter: [2, 500, 'm'], area: [0.5, 20000, 'm²'], openings: [0, 5000, 'm²'],
+  };
+  function rangeMsg(k, v) {
+    const r = RANGES[k]; if (!r || v === '' || v == null) return '';
+    const n = K.num(v, NaN);
+    if (!Number.isFinite(n) || n < 0) return 'Zadejte kladné číslo.';
+    if (n < r[0] || n > r[1]) return `Neobvyklá hodnota – obvykle ${String(r[0]).replace('.', ',')}–${String(r[1]).replace('.', ',')} ${r[2]}.`;
+    return '';
+  }
+
   function fieldHtml(item, f) {
     if (f.sub) return `<div class="sub-title">${esc(f.sub)}</div>`;
     const id = `f-${item.id}-${f.k}`;
@@ -149,9 +165,10 @@
     if (f.type === 'select') {
       return `<div class="field${wide}"><label for="${id}">${esc(f.label)}</label><select id="${id}" data-k="${f.k}">${f.options.map(([v, l]) => `<option value="${esc(v)}" ${String(item[f.k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
     }
-    return `<div class="field${wide}"><label for="${id}">${esc(f.label)}</label>
+    const msg = rangeMsg(f.k, item[f.k]);
+    return `<div class="field${wide}${msg ? ' invalid' : ''}"><label for="${id}">${esc(f.label)}</label>
       <div class="input-unit"><input id="${id}" type="number" inputmode="decimal" min="0" step="any" data-k="${f.k}" value="${esc(item[f.k])}"><span>${esc(f.unit)}</span></div>
-      ${f.hint ? `<p class="hint">${esc(f.hint)}</p>` : ''}</div>`;
+      <p class="hint err" data-err>${esc(msg)}</p>${f.hint ? `<p class="hint">${esc(f.hint)}</p>` : ''}</div>`;
   }
 
   function itemBodyHtml(item) {
@@ -185,6 +202,7 @@
     }
     $('#add-title').textContent = state.items.length ? 'Přidat další konstrukci' : 'Vyberte konstrukci';
     $('#btn-calc').disabled = !state.items.length;
+    renderSummary();
   }
 
   function addItem(type) {
@@ -319,10 +337,22 @@
         ${levelsHtml(res.item)}
         ${layers}
         ${ubarHtml(res)}
+        ${res.kwh ? `<div class="saving">Úspora oproti stavu bez zateplení ≈ <b>${kc(res.kwh * energyPrice())}</b> ročně</div>` : ''}
         <div class="lines">Potřeba vč. prořezu: ${lines}</div>
         ${res.warnings.map((w) => `<div class="warning">${esc(w)}</div>`).join('')}
         ${res.notes.length ? `<ul class="notes">${res.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       </div></article>`;
+  }
+
+  function renderSummary() {
+    const results = state.items.map((i) => K.recommend(i, ctx())).filter(Boolean);
+    const agg = K.aggregate(results);
+    const n = state.items.length;
+    $('#summary-stats').innerHTML = n ? `
+      <div><b>${n}</b><span>${n === 1 ? 'konstrukce' : n <= 4 ? 'konstrukce' : 'konstrukcí'}</span></div>
+      <div><b>${fmt(agg.totalArea, 0)} m²</b><span>plocha</span></div>
+      <div><b>≈ ${kc(agg.price * (1 + C.VAT))}</b><span>vč. DPH</span></div>`
+      : '<div><b>Začněte výběrem konstrukce</b><span>níže na stránce</span></div>';
   }
 
   let lastAgg = null;
@@ -336,13 +366,25 @@
 
     const withTarget = results.filter((r) => r.target != null);
     const okCount = withTarget.filter((r) => r.ok).length;
-    const m3 = agg.insulation.reduce((s, l) => s + l.m3, 0);
-    $('#tiles').innerHTML = [
+    const kwh = results.reduce((s, r) => s + (r.kwh || 0), 0);
+    const yearly = kwh * energyPrice();
+    const tiles = [
       [fmt(agg.totalArea, 0) + ' m²', 'plocha konstrukcí'],
       [agg.totalPacks, 'balení a desek izolace'],
-      [kc(agg.price * (1 + C.VAT)), 'orientační cena vč. DPH'],
+      [kc(agg.price * (1 + C.VAT)), 'orientační cena materiálu vč. DPH', 'hl'],
       withTarget.length ? [`${okCount}/${withTarget.length}`, 'konstrukcí splňuje cíl'] : [results.length, 'konstrukcí'],
-    ].map(([b, s]) => `<div class="tile"><b>${b}</b><span>${s}</span></div>`).join('');
+    ];
+    if (yearly > 0) tiles.splice(3, 0, [`≈ ${kc(yearly)}`, `roční úspora za teplo (${fmt(kwh / 1000, 1)} MWh)`, 'save']);
+    $('#tiles').innerHTML = tiles.map(([b, s, c]) => `<div class="tile ${c || ''}"><b>${b}</b><span>${s}</span></div>`).join('');
+
+    $('#variants').innerHTML = `<div class="variants-title">Porovnejte varianty materiálu</div><div class="variant-grid">${Object.entries(C.PRIORITIES).map(([k, pr]) => {
+      const rs = state.items.map((i) => K.recommend(i, { ...ctx(), priority: k })).filter(Boolean);
+      const a = K.aggregate(rs);
+      const ok = rs.filter((r) => r.target != null && r.ok).length; const tot = rs.filter((r) => r.target != null).length;
+      return `<button type="button" class="variant ${state.project.priority === k ? 'on' : ''}" data-prio="${k}">
+        <strong>${esc(pr.label)}</strong><span class="vp">${kc(a.price * (1 + C.VAT))}</span>
+        <small>${esc(pr.sub)}${tot ? ` · cíl splněn ${ok}/${tot}` : ''}</small></button>`;
+    }).join('')}</div>`;
 
     let rows = '<tr class="group"><td colspan="5">Izolace</td></tr>';
     rows += agg.insulation.map((l) => {
@@ -383,7 +425,7 @@
   }
 
   /* ---------- navigace ---------- */
-  function go(step) {
+  function go(step, scroll) {
     step = Number(step);
     if (step === 3 && !state.items.length) { toast('Nejprve přidejte alespoň jednu konstrukci.'); step = 2; }
     state.step = step; save();
@@ -393,10 +435,13 @@
       b.classList.toggle('active', n === step); b.classList.toggle('done', n < step);
       b.setAttribute('aria-current', n === step ? 'step' : 'false');
     });
+    $('#hero').classList.toggle('compact', step !== 1);
+    $('#summary-bar').hidden = step !== 2;
+    document.body.classList.toggle('has-bar', step === 2);
     if (step === 1) renderStep1();
     if (step === 2) renderItems();
     if (step === 3) renderResults();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (scroll !== false) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   let toastTimer;
@@ -413,6 +458,8 @@
     if (add) { addItem(add.dataset.add); return; }
     const lv = e.target.closest('[data-level]');
     if (lv) { state.project.level = lv.dataset.level; save(); renderResults(); return; }
+    const pv = e.target.closest('[data-prio]');
+    if (pv) { state.project.priority = pv.dataset.prio; save(); renderResults(); toast(`Varianta: ${C.PRIORITIES[pv.dataset.prio].label}`); return; }
     const act = e.target.closest('[data-act]');
     if (act) {
       const card = act.closest('.item'); const idx = state.items.findIndex((i) => i.id === card.dataset.id);
@@ -431,7 +478,12 @@
     item[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     save();
     if (e.target.tagName === 'SELECT' || e.target.type === 'checkbox') renderItems();
-    else card.querySelector('[data-area]').textContent = `${fmt(K.geometry(item).area)} m²`;
+    else {
+      card.querySelector('[data-area]').textContent = `${fmt(K.geometry(item).area)} m²`;
+      const field = e.target.closest('.field'); const msg = rangeMsg(k, e.target.value);
+      if (field) { field.classList.toggle('invalid', !!msg); const er = field.querySelector('[data-err]'); if (er) er.textContent = msg; }
+    }
+    renderSummary();
   });
 
   document.querySelector('[data-step="1"]').addEventListener('change', (e) => {
@@ -441,8 +493,18 @@
   });
   $('#project-name').addEventListener('input', (e) => { state.project.name = e.target.value; save(); });
   $('#waste').addEventListener('input', (e) => { state.project.waste = e.target.value; save(); });
+  $('#energy').addEventListener('input', (e) => { state.project.energy = e.target.value; save(); });
 
   $('#btn-print').addEventListener('click', () => window.print());
+  const enc = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const dec = (s2) => JSON.parse(decodeURIComponent(escape(atob(s2.replace(/-/g, '+').replace(/_/g, '/')))));
+  $('#btn-share').addEventListener('click', async () => {
+    const url = `${location.href.split('#')[0]}#p=${enc({ project: state.project, items: state.items })}`;
+    try {
+      if (navigator.share) await navigator.share({ title: state.project.name || 'Plánovač zateplení', url });
+      else { await navigator.clipboard.writeText(url); toast('Odkaz na projekt zkopírován.'); }
+    } catch (err) { if (err && err.name !== 'AbortError') toast('Sdílení se nepodařilo.'); }
+  });
   $('#btn-copy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(shoppingText()); toast('Nákupní seznam zkopírován.'); }
     catch (err) { toast('Kopírování se nepodařilo.'); }
@@ -453,10 +515,20 @@
   });
 
   /* ---------- start ---------- */
-  document.title = C.BRAND.appName;
   $('#app-name').textContent = C.BRAND.appName;
-  $('#app-company').textContent = C.BRAND.company;
+  $('#footer-pricelist').textContent = C.PRICE_LIST;
+  $('#print-date').textContent = new Date().toLocaleDateString('cs-CZ');
+  if (location.hash.startsWith('#p=')) {
+    try {
+      const shared = dec(location.hash.slice(3));
+      if (shared && shared.project && Array.isArray(shared.items)) {
+        state = { ...fresh(), project: { ...fresh().project, ...shared.project }, items: shared.items.filter((i) => C.TYPES[i.type]).map((i) => ({ ...i, id: uid() })), step: 3 };
+        save();
+      }
+    } catch (e) { /* neplatný odkaz */ }
+    history.replaceState(null, '', location.pathname + location.search);
+  }
   $('#btn-contact').href = C.BRAND.contactUrl;
   renderTypeGrid();
-  go(state.step || 1);
+  go(state.step || 1, false);
 })();

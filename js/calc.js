@@ -14,6 +14,7 @@
   const ROOF_WINDOW_M2 = 0.78 * 1.18;
   const DOOR_M2 = 0.8 * 1.97;
   const EXTRA_GRID_FRACTION = 0.08;
+  const DEGREE_DAYS = 3600; // orientační denostupně pro ČR (K·den)
 
   const num = (v, d = 0) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) ? n : d; };
   const round = (v, p = 2) => Math.round(v * 10 ** p) / 10 ** p;
@@ -196,7 +197,7 @@
       }
       const total = parts.reduce((a, b) => a + b, 0);
       const U = uHomogeneous({ rsi, rse, rOther: ex.R, layers: [{ t: total, lambda: p.lambda }] });
-      const res = { U, ok: true, layers: [], qtyLayers: [], notes: [], warnings: [] };
+      const res = { U, uBase: 1 / (rsi + rse + ex.R), ok: true, layers: [], qtyLayers: [], notes: [], warnings: [] };
       res.layers.push({ name: parts.length > 1 ? 'Na strop – ve vrstvách křížem' : 'Na strop', product: pid, parts, total, f: 0 });
       parts.forEach((t) => res.qtyLayers.push({ product: pid, t, factor: 1 }));
       if (parts.length > 1) res.notes.push('Druhou vrstvu pokládejte kolmo na první, aby se spáry nepřekrývaly.');
@@ -370,6 +371,9 @@
       res.acc.push({ id: 'lds100', need: foil });
       res.acc.push({ id: 'solifit', need: tape });
       if (geo.perimeter > 0) res.acc.push({ id: 'solimur', need: geo.perimeter });
+    }
+    if (res.uBase && res.U != null && res.uBase > res.U) {
+      res.kwh = (res.uBase - res.U) * geo.area * DEGREE_DAYS * 24 / 1000;
     }
     if (geo.area <= 0) res.warnings.push('Zadejte rozměry – plocha konstrukce je zatím nulová.');
     return res;

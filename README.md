@@ -37,8 +37,22 @@ Ceny v aplikaci jsou orientační podle ceníku. Zákazník vidí cenu bez DPH i
 
 V `BRAND.contactUrl` nastavte odkaz pro tlačítko „Poptat u prodejce“.
 
+## Vizuální identita
+- **Logo:** `assets/knauf-insulation-logo.png`.
+- **Písma:** firemní písma Knauf Screen, Knauf Screen Head a Knauf Screen Narrow (`assets/fonts`, WOFF2). Jsou chráněná autorským právem Knauf, takže repozitář ani web s nimi nezveřejňujte mimo rámec licence Knauf.
+- **Barvy:** oficiální paleta KNAUF Final Colors. Hlavní barvy jsou Cyan `#0099DE` a Accessible Blue `#003778` (text a tlačítka, kvůli kontrastu). Sekundární barvy (zelená, oranžová) slouží jen jako akcent, převažuje bílá.
+
+## UX funkce
+- **Úvodní stránka:** krátce vysvětlí, co plánovač umí.
+- **Živý souhrn v kroku 2:** počet konstrukcí, plocha a orientační cena se přepočítávají při každé změně.
+- **Kontrola zadání:** u neobvyklých hodnot (např. krokev 1600 mm) se zobrazí upozornění.
+- **Porovnání variant:** nejtenčí, vyvážená a nejlevnější varianta s cenou, přepínání jedním klepnutím.
+- **Odhad roční úspory:** u fasád a stropů pod půdou, podle ceny tepla nastavitelné v pokročilém nastavení.
+- **Sdílení:** projekt jde poslat odkazem (data jsou zakódovaná v adrese, nic se neukládá na server), vytisknout do PDF s logem nebo zkopírovat jako text.
+
 ## Struktura
 - `js/catalog.js` – produkty, normové hodnoty a typy konstrukcí (jediné místo pro správu dat)
 - `js/calc.js` – výpočetní jádro (čisté funkce)
 - `js/app.js` – uživatelské rozhraní
+- `css/app.css`, `css/fonts.css` – vzhled podle vizuálu Knauf
 - `tests/calc.test.js` – testy (`node tests/calc.test.js`)

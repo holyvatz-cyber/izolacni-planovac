@@ -3,26 +3,53 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Plánovač zateplení</title>
-  <meta name="description" content="Zadejte rozměry střechy, stropu nebo fasády a získejte doporučení izolace včetně přesného množství k nákupu.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Plánovač zateplení | Knauf Insulation</title>
+  <meta name="description" content="Zadejte rozměry střechy, stropu, fasády nebo podlahy a získejte doporučení izolace Knauf Insulation včetně přesného množství a orientační ceny.">
+  <meta name="theme-color" content="#0099DE">
+  <link rel="icon" type="image/png" href="assets/knauf-insulation-logo.png">
+  <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <div class="logo">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 16 16 5l12 11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/><path d="M8 14v13h16V14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><path d="M11 20c2-2 3 2 5 0s3 2 5 0" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"/></svg>
-        <div>
-          <strong id="app-name">Plánovač zateplení</strong>
-          <span id="app-company"></span>
-        </div>
-      </div>
+      <a class="brand" href="./" aria-label="Plánovač zateplení – Knauf Insulation">
+        <img src="assets/knauf-insulation-logo.png" alt="Knauf Insulation" width="190" height="48">
+        <span class="brand-app" id="app-name">Plánovač zateplení</span>
+      </a>
       <button type="button" class="btn ghost small" id="btn-reset">Nový projekt</button>
     </div>
   </header>
+
+  <!-- tisková hlavička -->
+  <div class="print-head">
+    <img src="assets/knauf-insulation-logo.png" alt="Knauf Insulation" width="190" height="48">
+    <span id="print-date"></span>
+  </div>
+
+  <section class="hero" id="hero">
+    <div class="wrap hero-inner">
+      <div class="hero-text">
+        <p class="eyebrow">Plánovač zateplení</p>
+        <h1>Správná izolace.<br><em>Přesné množství.</em></h1>
+        <p class="hero-lead">Zadejte rozměry střechy, stropu, fasády nebo podlahy. Doporučíme vhodný výrobek Knauf Insulation, tloušťku podle normy a spočítáme, kolik balení koupit.</p>
+        <ul class="hero-points">
+          <li><b>3 kroky</b><span>a máte nákupní seznam</span></li>
+          <li><b>ČSN 73 0540-2</b><span>ověření součinitele U</span></li>
+          <li><b>Ceník 2026</b><span>orientační cena</span></li>
+        </ul>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 320 240">
+          <path d="M20 120 160 20l140 100" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M44 112 160 30l116 82" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="14" stroke-linejoin="round" stroke-dasharray="3 6"/>
+          <path d="M52 118v100h216V118" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+          <rect x="132" y="158" width="56" height="60" rx="3" fill="none" stroke="#fff" stroke-width="8"/>
+          <path d="M80 150h30M80 170h30M210 150h30M210 170h30" stroke="rgba(255,255,255,.55)" stroke-width="8" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+  </section>
 
   <nav class="stepper wrap" aria-label="Kroky plánovače">
     <button type="button" class="step" data-go="1"><span>1</span>Cíl a priority</button>
@@ -33,13 +60,8 @@
   <main class="wrap" id="main">
     <!-- KROK 1 -->
     <section class="panel" data-step="1">
-      <h1>Naplánujte zateplení svého domu</h1>
-      <p class="lead">Během pár minut zjistíte, jakou izolaci a v jaké tloušťce potřebujete – a kolik balení koupit.</p>
-
-      <div class="field">
-        <label for="project-name">Název projektu</label>
-        <input id="project-name" type="text" maxlength="60" placeholder="např. Rodinný dům – podkroví">
-      </div>
+      <h2 class="panel-title">Co od zateplení očekáváte?</h2>
+      <p class="lead">Obě volby můžete kdykoli změnit – i na stránce s výsledkem.</p>
 
       <fieldset class="choice-group">
         <legend>Jak dobře chcete izolovat?</legend>
@@ -51,35 +73,46 @@
         <div class="choices" id="priority-choices"></div>
       </fieldset>
 
+      <div class="field">
+        <label for="project-name">Název projektu <span class="opt">(nepovinné)</span></label>
+        <input id="project-name" type="text" maxlength="60" placeholder="např. Rodinný dům – podkroví">
+      </div>
+
       <details class="advanced">
         <summary>Pokročilé nastavení</summary>
-        <div class="field narrow">
-          <label for="waste">Rezerva na prořez</label>
-          <div class="input-unit"><input id="waste" type="number" min="0" max="30" step="1" placeholder="auto"><span>%</span></div>
-          <p class="hint">Ponechte prázdné: role 5 %, desky 3 %.</p>
+        <div class="adv-grid">
+          <div class="field">
+            <label for="waste">Rezerva na prořez</label>
+            <div class="input-unit"><input id="waste" type="number" min="0" max="30" step="1" placeholder="auto"><span>%</span></div>
+            <p class="hint">Prázdné = role 5 %, desky 3 %.</p>
+          </div>
+          <div class="field">
+            <label for="energy">Cena tepla</label>
+            <div class="input-unit"><input id="energy" type="number" min="0" step="0.1" placeholder="2,5"><span>Kč/kWh</span></div>
+            <p class="hint">Pro odhad roční úspory.</p>
+          </div>
         </div>
       </details>
 
       <div class="actions">
-        <button type="button" class="btn primary" data-go="2">Pokračovat</button>
+        <button type="button" class="btn primary big" data-go="2">Pokračovat <span aria-hidden="true">→</span></button>
       </div>
     </section>
 
     <!-- KROK 2 -->
     <section class="panel" data-step="2" hidden>
-      <h1>Co budete zateplovat?</h1>
-      <p class="lead">Přidejte jednotlivé konstrukce nebo místnosti. Každou můžete zadat rozměry nebo přímo plochou.</p>
+      <h2 class="panel-title">Co budete zateplovat?</h2>
+      <p class="lead">Přidejte jednotlivé konstrukce nebo místnosti. Každou můžete zadat rozměry, nebo přímo plochou.</p>
 
       <div id="items"></div>
 
       <div class="add-block">
-        <h2 class="add-title" id="add-title">Přidat konstrukci</h2>
+        <h3 class="add-title" id="add-title">Přidat konstrukci</h3>
         <div class="type-grid" id="type-grid"></div>
       </div>
 
       <div class="actions">
-        <button type="button" class="btn ghost" data-go="1">Zpět</button>
-        <button type="button" class="btn primary" data-go="3" id="btn-calc">Zobrazit doporučení</button>
+        <button type="button" class="btn ghost" data-go="1">← Zpět</button>
       </div>
     </section>
 
@@ -87,10 +120,12 @@
     <section class="panel" data-step="3" hidden>
       <div class="result-head">
         <div>
-          <h1 id="result-title">Vaše doporučení</h1>
+          <p class="eyebrow dark">Doporučení Knauf Insulation</p>
+          <h2 class="panel-title" id="result-title">Vaše doporučení</h2>
           <p class="lead" id="result-sub"></p>
         </div>
         <div class="result-actions no-print">
+          <button type="button" class="btn ghost small" id="btn-share">Sdílet odkaz</button>
           <button type="button" class="btn ghost small" id="btn-copy">Kopírovat seznam</button>
           <button type="button" class="btn ghost small" id="btn-print">Tisk / PDF</button>
         </div>
@@ -98,10 +133,12 @@
 
       <div class="tiles" id="tiles"></div>
 
-      <h2>Nákupní seznam</h2>
+      <div class="variants no-print" id="variants"></div>
+
+      <h3 class="sec-title">Nákupní seznam</h3>
       <div id="shopping"></div>
 
-      <h2>Doporučená skladba podle konstrukcí</h2>
+      <h3 class="sec-title">Doporučená skladba podle konstrukcí</h3>
       <div id="results" aria-live="polite"></div>
 
       <aside class="disclaimer">
@@ -109,12 +146,33 @@
         Skutečná spotřeba se může lišit podle tvaru konstrukce a způsobu pokládky. U žádostí o dotace doložte výpočet od projektanta nebo energetického specialisty.
       </aside>
 
+      <div class="cta no-print">
+        <div>
+          <strong>Máte hotovo? Poptejte materiál u prodejce.</strong>
+          <span>Nákupní seznam si vytiskněte nebo pošlete odkazem.</span>
+        </div>
+        <a class="btn primary big" id="btn-contact" href="#">Najít prodejce</a>
+      </div>
       <div class="actions no-print">
-        <button type="button" class="btn ghost" data-go="2">Upravit konstrukce</button>
-        <a class="btn primary" id="btn-contact" href="#">Poptat u prodejce</a>
+        <button type="button" class="btn ghost" data-go="2">← Upravit konstrukce</button>
       </div>
     </section>
   </main>
+
+  <!-- živý souhrn v kroku 2 -->
+  <div class="summary-bar" id="summary-bar" hidden>
+    <div class="wrap summary-inner">
+      <div class="summary-stats" id="summary-stats"></div>
+      <button type="button" class="btn primary" data-go="3" id="btn-calc">Zobrazit doporučení <span aria-hidden="true">→</span></button>
+    </div>
+  </div>
+
+  <footer class="site-footer no-print">
+    <div class="wrap">
+      <img src="assets/knauf-insulation-logo.png" alt="Knauf Insulation" width="120" height="30">
+      <span>Data výrobků a cen: <span id="footer-pricelist"></span></span>
+    </div>
+  </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

@@ -1,0 +1,10 @@
+/* Firemní písma Knauf (© Knauf, všechna práva vyhrazena) – používat jen v souladu s licencí Knauf. */
+@font-face { font-family: "Knauf Screen"; src: url("../assets/fonts/KnaufScreen-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Knauf Screen"; src: url("../assets/fonts/KnaufScreen-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Knauf Screen"; src: url("../assets/fonts/KnaufScreen-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Knauf Screen"; src: url("../assets/fonts/KnaufScreen-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Knauf Screen Head"; src: url("../assets/fonts/KnaufScreenHead-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Knauf Screen Head"; src: url("../assets/fonts/KnaufScreenHead-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Knauf Screen Narrow"; src: url("../assets/fonts/KnaufScreenNarrow-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Knauf Screen Narrow"; src: url("../assets/fonts/KnaufScreenNarrow-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Knauf Screen Narrow"; src: url("../assets/fonts/KnaufScreenNarrow-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
