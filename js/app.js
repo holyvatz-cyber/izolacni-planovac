@@ -31,13 +31,13 @@
 
   /* ---------- výchozí hodnoty ---------- */
   const DEFAULTS = {
-    sikma: { name: 'Podkroví', mode: 'rozmery', rafterLen: '5', roofLen: '10', sides: '2', windows: '0', area: '80', frameDepth: '160', frameWidth: '80', frameSpacing: '900', maxExtra: '80' },
+    sikma: { name: 'Podkroví', mode: 'rozmery', rafterLen: '5', roofLen: '10', sides: '2', windows: '0', winSize: '78x118', winW: '78', winH: '118', area: '80', frameDepth: '160', frameWidth: '80', frameSpacing: '900', maxExtra: '80' },
     strop: { name: 'Strop pod půdou', mode: 'rozmery', len: '10', wid: '8', area: '80', ceiling: 'beton', walkable: false, frameDepth: '180', frameWidth: '120', frameSpacing: '1000', maxExtra: '100' },
     etics: { name: 'Fasáda', mode: 'rozmery', perimeter: '40', height: '6', openings: '30', area: '200', wall: 'cp450' },
     venti: { name: 'Provětrávaná fasáda', mode: 'rozmery', perimeter: '40', height: '6', openings: '30', area: '200', wall: 'cp450' },
     drevostavba: { name: 'Obvodová stěna', mode: 'rozmery', len: '36', height: '2.7', openings: '22', area: '75', frameDepth: '160', frameWidth: '60', frameSpacing: '625', maxExtra: '60' },
     plocha: { name: 'Plochá střecha', mode: 'rozmery', len: '12', wid: '10', area: '120', deck: 'zb', use: 'nepochozi', fixing: 'kotvena' },
-    nadkrokve: { name: 'Střecha nad krokvemi', mode: 'plocha', area: '100', rafterLen: '6', roofLen: '10', sides: '2', variant: 'shora', frameDepth: '140', frameWidth: '80', frameSpacing: '900', maxOver: '260' },
+    nadkrokve: { name: 'Střecha nad krokvemi', mode: 'plocha', area: '100', rafterLen: '6', roofLen: '10', sides: '2', windows: '0', winSize: '78x118', winW: '78', winH: '118', variant: 'shora', frameDepth: '140', frameWidth: '80', frameSpacing: '900', maxOver: '260' },
     sklep: { name: 'Strop nad sklepem', mode: 'rozmery', len: '10', wid: '8', area: '80', ceiling: 'beton', fire: 'ano' },
     podlaha: { name: 'Podlaha – obývák', mode: 'rozmery', len: '6', wid: '4.5', area: '27', floorType: 'beton', load: '200', slab: '200' },
     pricka: { name: 'Příčka', mode: 'rozmery', len: '4', height: '2.6', doors: '1', area: '10', profile: '75' },
@@ -53,13 +53,22 @@
     { k: 'frameSpacing', label: labels[2], unit: 'mm', hint: 'Měřeno ze středu na střed.' },
     { k: 'maxExtra', label: labels[3], unit: 'mm', hint: labels[4] },
   ];
+  const WIN_SIZES = ['55x78', '55x98', '66x98', '66x118', '78x98', '78x118', '78x140', '94x118', '94x140', '114x118', '134x98'];
+  const WINDOW_FIELDS = [
+    { sub: 'Střešní okna' },
+    { k: 'windows', label: 'Počet oken', unit: 'ks', hint: 'Plochu oken odečteme, obvod použijeme pro pásky.' },
+    { k: 'winSize', label: 'Rozměr okna (š × v)', type: 'select', help: 'winSize',
+      options: [...WIN_SIZES.map((v) => [v, v.replace('x', ' × ') + ' cm' + (v === '78x118' ? ' – nejčastější' : '')]), ['vlastni', 'Jiný rozměr…']] },
+    { k: 'winW', label: 'Šířka okna', unit: 'cm', show: (it) => it.winSize === 'vlastni' },
+    { k: 'winH', label: 'Výška okna', unit: 'cm', show: (it) => it.winSize === 'vlastni' },
+  ];
   const FIELDS = {
     sikma: [
       { k: 'rafterLen', label: 'Délka krokve (zateplovaná část)', unit: 'm', mode: 'rozmery', hint: 'Od pozednice po hřeben, nebo po strop podkroví.' },
       { k: 'roofLen', label: 'Délka střechy', unit: 'm', mode: 'rozmery' },
       { k: 'sides', label: 'Počet střešních rovin', type: 'select', options: [['1', '1 – pultová'], ['2', '2 – sedlová'], ['4', '4 – valbová (orientačně)']], mode: 'rozmery' },
       { k: 'area', label: 'Plocha střechy k zateplení', unit: 'm²', mode: 'plocha', hint: 'Bez střešních oken.' },
-      { k: 'windows', label: 'Střešní okna', unit: 'ks', hint: 'Odečteme jejich plochu a připočteme pásky.' },
+      ...WINDOW_FIELDS,
       ...FRAME('Krokve', ['Výška krokve', 'Šířka krokve', 'Rozteč krokví', 'Max. izolace pod krokvemi', 'Kolik cm výšky podkroví můžete obětovat.']),
     ],
     strop: [
@@ -114,6 +123,7 @@
     { k: 'roofLen', label: 'Délka střechy', unit: 'm', mode: 'rozmery' },
     { k: 'sides', label: 'Počet střešních rovin', type: 'select', options: [['1', '1 – pultová'], ['2', '2 – sedlová'], ['4', '4 – valbová (orientačně)']], mode: 'rozmery' },
     { k: 'area', label: 'Plocha střechy', unit: 'm²', mode: 'plocha' },
+    ...WINDOW_FIELDS,
     { k: 'maxOver', label: 'Max. tloušťka nad krokvemi', unit: 'mm', hint: 'Omezuje ji výška okapu a napojení na štíty.' },
     { sub: 'Krokve', show: (it) => it.variant === 'shora' },
     { k: 'frameDepth', label: 'Výška krokve', unit: 'mm', show: (it) => it.variant === 'shora' },
@@ -142,12 +152,16 @@
     perimeter: ['Obvod domu', 'Součet délek všech zateplovaných stěn. Výšku měřte od soklu po okap.', SVG_FACADE],
     height: ['Výška', 'Výška zateplované stěny. Plochu štítů přidejte zvlášť nebo použijte režim „Znám plochu“.', SVG_FACADE],
     maxExtra: ['Vrstva pod krokvemi', 'Izolace na roštu pod krokvemi přeruší tepelné mosty přes dřevo. Každý centimetr ale ubere výšku podkroví.', SVG_RAFTERS],
+    winSize: ['Rozměr střešního okna', 'Rozměr najdete na typovém štítku v horní části rámu okna (po otevření křídla). Bývá uveden v cm jako šířka × výška, případně kódem výrobce – např. 78 × 118 cm. Jiný rozměr zadejte volbou „Jiný rozměr“.', '<svg viewBox="0 0 220 110"><path d="M20 100 110 15l90 85" fill="none" stroke="var(--ink-3)" stroke-width="3"/><rect x="88" y="45" width="44" height="40" fill="var(--ki-cyan-20)" stroke="var(--ki-blue-acc)" stroke-width="2"/><rect x="96" y="49" width="28" height="6" fill="#fff" stroke="var(--ki-cyan)"/><path d="M88 92h44" stroke="var(--ki-cyan)" stroke-width="2"/><text x="96" y="104" font-size="11" fill="var(--ink)">šířka</text><path d="M140 45v40" stroke="var(--ki-cyan)" stroke-width="2"/><text x="145" y="69" font-size="11" fill="var(--ink)">výška</text><text x="60" y="42" font-size="10" fill="var(--ink-2)">štítek</text></svg>'],
     slab: ['Tloušťka stropu', 'Tloušťka nosné železobetonové desky bez podlahy a omítek – najdete ji v projektu domu (běžně 150–250 mm).', ''],
   };
 
   /* ---------- stav ---------- */
   const fresh = () => ({ project: { name: '', level: 'doporucena', priority: 'vyvazeny', waste: '', energy: '' }, items: [], step: 1 });
   const energyPrice = () => { const n = K.num(state.project.energy, NaN); return Number.isFinite(n) && n > 0 ? n : 2.5; };
+  /** Doplní nová pole do projektů uložených starší verzí. */
+  const migrate = (i) => (DEFAULTS[i.type] ? { ...DEFAULTS[i.type], ...i, winSize: i.winSize || DEFAULTS[i.type].winSize } : i);
+
   let state = load();
 
   function load() {
@@ -155,7 +169,7 @@
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) {
         const s = JSON.parse(raw);
-        if (s && s.project && Array.isArray(s.items)) return { ...fresh(), ...s, items: s.items.filter((i) => C.TYPES[i.type]) };
+        if (s && s.project && Array.isArray(s.items)) return { ...fresh(), ...s, items: s.items.filter((i) => C.TYPES[i.type]).map(migrate) };
       }
     } catch (e) { /* úložiště nedostupné */ }
     return fresh();
@@ -183,7 +197,7 @@
 
   const RANGES = {
     frameDepth: [40, 400, 'mm'], frameWidth: [30, 250, 'mm'], frameSpacing: [300, 1500, 'mm'], maxExtra: [0, 300, 'mm'],
-    slab: [80, 400, 'mm'], windows: [0, 50, 'ks'], doors: [0, 20, 'ks'], sides: [1, 4, ''],
+    slab: [80, 400, 'mm'], windows: [0, 50, 'ks'], winW: [40, 160, 'cm'], winH: [60, 200, 'cm'], doors: [0, 20, 'ks'], sides: [1, 4, ''],
     rafterLen: [0.5, 30, 'm'], roofLen: [0.5, 100, 'm'], len: [0.3, 200, 'm'], wid: [0.3, 200, 'm'], height: [0.5, 60, 'm'],
     perimeter: [2, 500, 'm'], area: [0.5, 20000, 'm²'], openings: [0, 5000, 'm²'],
   };
@@ -203,7 +217,10 @@
       return `<div class="field${wide}"><label class="toggle"><input type="checkbox" id="${id}" data-k="${f.k}" ${item[f.k] ? 'checked' : ''}> ${esc(f.label)}</label></div>`;
     }
     if (f.type === 'select') {
-      return `<div class="field${wide}"><label for="${id}">${esc(f.label)}</label><select id="${id}" data-k="${f.k}">${f.options.map(([v, l]) => `<option value="${esc(v)}" ${String(item[f.k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+      const hs = HELP[f.help || f.k];
+      const hb = hs ? `<button type="button" class="help-btn" data-help aria-expanded="false" aria-label="Nápověda: ${esc(hs[0])}">?</button>` : '';
+      const hp = hs ? `<div class="help-pop" hidden><strong>${esc(hs[0])}</strong>${hs[2]}<p>${esc(hs[1])}</p></div>` : '';
+      return `<div class="field${wide}"><label for="${id}">${esc(f.label)}${hb}</label>${hp}<select id="${id}" data-k="${f.k}">${f.options.map(([v, l]) => `<option value="${esc(v)}" ${String(item[f.k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
     }
     const msg = rangeMsg(f.k, item[f.k]);
     const h = HELP[f.k];
@@ -652,7 +669,7 @@
     try {
       const shared = dec(location.hash.slice(3));
       if (shared && shared.project && Array.isArray(shared.items)) {
-        state = { ...fresh(), project: { ...fresh().project, ...shared.project }, items: shared.items.filter((i) => C.TYPES[i.type]).map((i) => ({ ...i, id: uid() })), step: 3 };
+        state = { ...fresh(), project: { ...fresh().project, ...shared.project }, items: shared.items.filter((i) => C.TYPES[i.type]).map((i) => ({ ...migrate(i), id: uid() })), step: 3 };
         save();
       }
     } catch (e) { /* neplatný odkaz */ }

@@ -33,3 +33,13 @@ assert.strictEqual(floor.layers[0].product, 'ptn');
 assert.strictEqual(floor.impact.lnw, 48);
 assert.ok(floor.acc.some((a) => a.id === 'edge100' && Math.abs(a.need - 18.9) < 0.01));
 console.log('Testy plochých střech a podlah prošly.');
+
+// střešní okna – rozměr
+const g1 = K.geometry({ type: 'sikma', mode: 'rozmery', rafterLen: 5, roofLen: 10, sides: 2, windows: 2, winSize: '114x118' });
+assert.ok(Math.abs(g1.area - (100 - 2 * 1.14 * 1.18)) < 1e-9, 'odečte plochu zvoleného rozměru');
+assert.ok(Math.abs(g1.winPerim - 2 * 2 * (1.14 + 1.18)) < 1e-9);
+const g2 = K.geometry({ type: 'sikma', mode: 'rozmery', rafterLen: 5, roofLen: 10, sides: 2, windows: 1, winSize: 'vlastni', winW: 60, winH: 100 });
+assert.ok(Math.abs(g2.area - (100 - 0.6)) < 1e-9, 'vlastní rozměr');
+const g3 = K.geometry({ type: 'nadkrokve', mode: 'rozmery', rafterLen: 6, roofLen: 10, sides: 2, windows: 0 });
+assert.strictEqual(g3.area, 120, 'nadkrokevní – plocha z rozměrů');
+console.log('Testy střešních oken prošly.');

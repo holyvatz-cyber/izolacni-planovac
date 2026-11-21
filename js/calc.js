@@ -11,7 +11,12 @@
   const LAMBDA_WOOD = 0.13;
   const R_AIR_GAP = 0.15;
   const R_SDK = 0.0125 / 0.22;
-  const ROOF_WINDOW_M2 = 0.78 * 1.18;
+  /** Rozměr střešního okna [m] – standardní velikost „78x118“ nebo vlastní šířka/výška v cm. */
+  function windowSize(item) {
+    if (item.winSize === 'vlastni') return [num(item.winW, 78) / 100, num(item.winH, 118) / 100];
+    const m = String(item.winSize || '78x118').match(/^(\d+)x(\d+)$/);
+    return m ? [Number(m[1]) / 100, Number(m[2]) / 100] : [0.78, 1.18];
+  }
   const DOOR_M2 = 0.8 * 1.97;
   const EXTRA_GRID_FRACTION = 0.08;
   const DEGREE_DAYS = 3600; // orientační denostupně pro ČR (K·den)
@@ -85,14 +90,17 @@
     const t = item.type;
     if (item.mode === 'plocha') {
       const a = Math.max(0, num(item.area));
-      return { area: a, perimeter: 4 * Math.sqrt(a), windows: num(item.windows) };
+      const [ww, wh] = windowSize(item); const wn = Math.max(0, Math.round(num(item.windows)));
+      return { area: a, perimeter: 4 * Math.sqrt(a), windows: wn, winPerim: wn * 2 * (ww + wh) };
     }
     switch (t) {
-      case 'sikma': {
+      case 'sikma':
+      case 'nadkrokve': {
         const sides = Math.max(1, Math.round(num(item.sides, 2)));
         const w = Math.max(0, Math.round(num(item.windows)));
+        const [ww, wh] = windowSize(item);
         const plane = num(item.rafterLen) * num(item.roofLen);
-        return { area: Math.max(0, plane * sides - w * ROOF_WINDOW_M2), perimeter: sides * 2 * (num(item.rafterLen) + num(item.roofLen)), windows: w };
+        return { area: Math.max(0, plane * sides - w * ww * wh), perimeter: sides * 2 * (num(item.rafterLen) + num(item.roofLen)), windows: w, winPerim: w * 2 * (ww + wh) };
       }
       case 'sklep':
       case 'plocha':
@@ -432,7 +440,7 @@
     if (res.edge && geo.perimeter > 0) res.acc.push({ id: res.edge, need: geo.perimeter * 1.05 });
     if (res.needsVaporBarrier && geo.area > 0) {
       const foil = geo.area * 1.15;
-      const tape = geo.area / 1.85 + geo.windows * 4.5;
+      const tape = geo.area / 1.85 + (geo.winPerim || 0) * 1.1;
       res.acc.push({ id: 'lds100', need: foil });
       res.acc.push({ id: 'solifit', need: tape });
       if (geo.perimeter > 0) res.acc.push({ id: 'solimur', need: geo.perimeter });
@@ -493,7 +501,7 @@
     return { areas, light: light >= S.light.min ? light : 0, lightRaw: sum(S.light.rates), loan };
   }
 
-  const api = { subsidy, recommend, aggregate, geometry, bestFill, bestCover, uFramed, uHomogeneous, num, round };
+  const api = { windowSize, subsidy, recommend, aggregate, geometry, bestFill, bestCover, uFramed, uHomogeneous, num, round };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Calc = api;
 })(typeof window !== 'undefined' ? window : globalThis);
