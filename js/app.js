@@ -659,6 +659,29 @@
     history.replaceState(null, '', location.pathname + location.search);
   }
   $('#btn-contact').href = DEALERS.length ? '#dealers' : C.BRAND.contactUrl;
+  /* ---------- instalace jako aplikace (PWA) ---------- */
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const installBtn = $('#btn-install');
+  let installEvent = null;
+  if (!standalone && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e; installBtn.hidden = false; });
+    if (isIOS) installBtn.hidden = false;
+  }
+  installBtn.addEventListener('click', async () => {
+    track('install_click', { ios: isIOS });
+    if (installEvent) {
+      installEvent.prompt();
+      const choice = await installEvent.userChoice.catch(() => null);
+      if (choice && choice.outcome === 'accepted') { installBtn.hidden = true; toast('Plánovač je nainstalovaný.'); }
+      installEvent = null;
+    } else {
+      const d = $('#install-dialog');
+      if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+    }
+  });
+  window.addEventListener('appinstalled', () => { installBtn.hidden = true; track('installed'); });
+
   if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }

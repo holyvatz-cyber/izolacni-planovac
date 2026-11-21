@@ -54,7 +54,7 @@ V `BRAND.contactUrl` nastavte odkaz pro tlačítko „Poptat u prodejce“.
 - **Dotace NZÚ:** `SUBSIDY` v `js/catalog.js` obsahuje orientační sazby NZÚ Light a NZÚ 2026+ (stav 06/2026). Výzvy se mění, proto sazby a technické podmínky před nasazením a pak pravidelně ověřujte na novazelenausporam.cz.
 - **Prodejci:** sekce „Kde koupit“ se zobrazí, jakmile do `js/dealers.js` doplníte seznam prodejců (formát je popsaný v souboru). Do té doby tlačítko vede na `BRAND.contactUrl`.
 - **Měření návštěvnosti:** události se zapisují do `window.dataLayer`. Měřicí skript Google Tag Manageru se načte až po vyplnění `BRAND.gtmId` a po souhlasu návštěvníka. Seznam událostí je v `js/analytics.js`.
-- **Instalace do mobilu a offline režim (PWA):** `manifest.webmanifest` a `sw.js`. Funguje jen na serveru přes HTTPS. Po každé změně souborů zvyšte `VERSION` v `sw.js`.
+- **Instalace jako aplikace (PWA):** v hlavičce je tlačítko **Nainstalovat**. V Chrome a Edge (Android, Windows, macOS) otevře systémovou instalaci, na iPhonu a iPadu ukáže návod „Sdílet → Přidat na plochu“. Nainstalovaná aplikace funguje i offline. Instalace vyžaduje web přes HTTPS (např. GitHub Pages). Po každé změně souborů zvyšte `VERSION` v `sw.js`.
 - **Heraklith a Tektalan** nejsou ve stavebním ceníku, proto se u nich ukazuje „cena na dotaz“ a do součtu se nezapočítávají. Ceny můžete doplnit v `js/catalog.js`.
 
 ## Struktura

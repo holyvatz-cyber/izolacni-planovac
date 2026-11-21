@@ -3,9 +3,12 @@
   "short_name": "Plánovač zateplení",
   "description": "Doporučení izolace Knauf Insulation včetně tloušťky, množství a orientační ceny.",
   "lang": "cs",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "orientation": "any",
+  "categories": ["utilities", "productivity"],
   "background_color": "#ffffff",
   "theme_color": "#0099DE",
   "icons": [
