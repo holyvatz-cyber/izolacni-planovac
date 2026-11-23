@@ -43,3 +43,16 @@ assert.ok(Math.abs(g2.area - (100 - 0.6)) < 1e-9, 'vlastní rozměr');
 const g3 = K.geometry({ type: 'nadkrokve', mode: 'rozmery', rafterLen: 6, roofLen: 10, sides: 2, windows: 0 });
 assert.strictEqual(g3.area, 120, 'nadkrokevní – plocha z rozměrů');
 console.log('Testy střešních oken prošly.');
+
+// foukaná izolace Supafil
+const ctxV = { level: 'doporucena', priority: 'vykon' };
+const loft = K.recommend({ type: 'foukana', mode: 'plocha', area: 100, variant: 'puda', ceiling: 'beton' }, ctxV);
+assert.ok(loft.ok && loft.U <= 0.20);
+const la = K.aggregate([loft]).insulation[0];
+assert.ok(Math.abs(la.kg - 100 * 22 * loft.layers[0].total / 1000 * 1.03) < 1e-6, 'kg = plocha × ρ × tloušťka × rezerva');
+assert.strictEqual(la.packs, Math.ceil(la.kg / 16.6));
+const bung = K.recommend({ type: 'foukana', mode: 'plocha', area: 100, variant: 'bungalov', ceiling: 'tramovy', frameDepth: 180, frameWidth: 80, frameSpacing: 900 }, ctx);
+assert.ok(bung.ok && bung.layers[1].total >= 50, 'bungalov: trámy překryté min. 50 mm');
+const cav = K.recommend({ type: 'foukana', mode: 'plocha', area: 50, variant: 'dutina_strop', ceiling: 'tramovy', frameDepth: 180, frameWidth: 100, frameSpacing: 900 }, { level: 'doporucena', priority: 'cena' });
+assert.ok(cav.ok, 'dutina: při nesplnění se zvolí hutnější aplikace');
+console.log('Testy foukané izolace prošly.');

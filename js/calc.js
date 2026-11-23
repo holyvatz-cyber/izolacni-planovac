@@ -102,6 +102,7 @@
         const plane = num(item.rafterLen) * num(item.roofLen);
         return { area: Math.max(0, plane * sides - w * ww * wh), perimeter: sides * 2 * (num(item.rafterLen) + num(item.roofLen)), windows: w, winPerim: w * 2 * (ww + wh) };
       }
+      case 'foukana':
       case 'sklep':
       case 'plocha':
       case 'podlaha':
@@ -403,6 +404,74 @@
     return res;
   }
 
+  /** Foukaná izolace Supafil – volně na strop, strop bungalovu (mezi + nad trámy), uzavřené dutiny. */
+  function recommendBlown(item, target, prio) {
+    const v = item.variant || 'puda';
+    const isWall = v === 'dutina_stena';
+    const closed = v === 'dutina_strop' || isWall;
+    let [pid, rho] = C.BLOWN_PRIORITY[prio][closed ? 'cavity' : 'open'];
+    let P = C.BLOWN[pid];
+    let lam = (closed ? P.cavity : P.open).find((g) => g.rho === rho).lambda;
+    const minOpen = pid === 'supafilFrame' ? 190 : 75; // nejmenší tloušťky v tabulkách výrobce
+    const ex = C.EXISTING_CEILINGS[item.ceiling] || C.EXISTING_CEILINGS.beton;
+    const rsi = isWall ? 0.13 : 0.10; const rse = isWall ? 0.04 : 0.10;
+    const rOther = isWall ? R_SDK + 0.015 / 0.13 + 0.10 : ex.R;
+    const res = { ok: true, layers: [], qtyLayers: [], notes: [], warnings: [], acc: [], blown: true };
+    const kgPerM2 = (mm) => rho * mm / 1000;
+    let settled; // tloušťka vrstvy po sesednutí [mm] na m² plochy (pro dutiny = hloubka dutiny × podíl dutiny)
+
+    if (v === 'puda') {
+      const need = Math.max(0, (1 / target - rsi - rse - rOther) * lam * 1000);
+      const maxT = 500;
+      settled = Math.min(maxT, Math.max(minOpen, Math.ceil(need / 10) * 10));
+      res.U = uHomogeneous({ rsi, rse, rOther, layers: [{ t: settled, lambda: lam }] });
+      res.uBase = 1 / (rsi + rse + rOther);
+      if (res.U > target) { res.ok = false; res.warnings.push('Cílové hodnoty nelze dosáhnout do 500 mm – kontaktujte technickou podporu.'); }
+      res.layers.push({ name: 'Volně nafoukáno na strop půdy', product: pid, parts: [settled], total: settled, f: 0, rho, lambda: lam });
+      res.qtyLayers.push({ product: pid, t: settled, factor: 1, blown: { rho, kg: kgPerM2(settled) } });
+    } else if (v === 'bungalov') {
+      const depth = num(item.frameDepth, 160); const width = num(item.frameWidth, 80);
+      const spacing = Math.max(width + 1, num(item.frameSpacing, 900)); const f = width / spacing;
+      const cavity = { depth, fill: depth, lambda: lam, f };
+      const calc = (t) => uFramed({ rsi, rse, rOther, cavity, extra: t ? { t, lambda: lam, f: 0 } : null });
+      let over = 50; // trámy vždy překrýt min. 50 mm – přeruší tepelné mosty
+      while (over < 500 && (calc(over) > target || depth * (1 - f) + over < minOpen)) over += 10;
+      res.U = calc(over); res.ok = res.U <= target;
+      res.uBase = 1 / (rsi + rse + rOther);
+      res.layers.push({ name: 'Mezi stropní trámy', product: pid, parts: [depth], total: depth, f, rho, lambda: lam });
+      if (over) res.layers.push({ name: 'Souvislá vrstva nad trámy', product: pid, parts: [over], total: over, f: 0, rho, lambda: lam });
+      settled = depth * (1 - f) + over;
+      res.qtyLayers.push({ product: pid, t: depth + over, factor: 1, blown: { rho, kg: kgPerM2(settled) } });
+      res.notes.push(`Celková výška vrstvy ${depth + over} mm – izolace překryje trámy o ${over} mm a přeruší tepelné mosty přes dřevo.`);
+      if (!res.ok) res.warnings.push('Cílové hodnoty nelze dosáhnout do 500 mm nad trámy – kontaktujte technickou podporu.');
+    } else {
+      const depth = num(item.frameDepth, isWall ? 160 : 180); const width = num(item.frameWidth, isWall ? 60 : 100);
+      const spacing = Math.max(width + 1, num(item.frameSpacing, isWall ? 625 : 900)); const f = width / spacing;
+      const uOf = (l) => uFramed({ rsi, rse, rOther, cavity: { depth, fill: depth, lambda: l, f }, extra: null });
+      // nesplní-li zvolená objemová hmotnost cíl, zkusí se hutnější aplikace s nižší λ
+      const grades = [...C.BLOWN.supafilFrame.cavity, ...C.BLOWN.supafilLoft.cavity.map((g) => ({ ...g, pid: 'supafilLoft' }))]
+        .map((g) => ({ pid: g.pid || 'supafilFrame', ...g })).filter((g) => g.lambda < lam).sort((a, b) => b.lambda - a.lambda || a.rho - b.rho);
+      if (target != null && uOf(lam) > target) {
+        const better = grades.find((g) => uOf(g.lambda) <= target) || grades[grades.length - 1];
+        if (better) { pid = better.pid; P = C.BLOWN[pid]; rho = better.rho; lam = better.lambda; }
+      }
+      res.U = uOf(lam);
+      res.ok = target == null || res.U <= target;
+      res.layers.push({ name: isWall ? 'Uzavřená dutina rámové stěny' : 'Uzavřená dutina stropu / podlahy', product: pid, parts: [depth], total: depth, f, rho, lambda: lam });
+      settled = depth * (1 - f);
+      res.qtyLayers.push({ product: pid, t: depth, factor: 1, blown: { rho, kg: kgPerM2(settled) } });
+      if (!res.ok) res.warnings.push(`Samotná dutina ${depth} mm na cíl U ≤ ${target.toFixed(2)} nestačí – doplňte izolaci z vnější nebo vnitřní strany (např. instalační předstěnu nebo vrstvu na podlaze půdy).`);
+      res.notes.push('Do uzavřené dutiny se izolace fouká otvory průměru cca 50 mm, které se poté uzavřou; dutina musí být po celé ploše uzavřená.');
+    }
+    const installed = Math.ceil((v === 'puda' ? settled * 1.015 : 0) / 5) * 5;
+    if (v === 'puda') res.notes.push(`Foukat na tloušťku min. ${installed} mm – po sesednutí (třída S1, do 1 %) zůstane ${settled} mm.`);
+    res.notes.push(`${P.name}: objemová hmotnost ${rho} kg/m³, λD = ${lam.toFixed(3).replace('.', ',')} W/(m·K), spotřeba cca ${kgPerM2(settled).toFixed(1).replace('.', ',')} kg/m².`);
+    res.notes.push('Foukanou izolaci aplikuje strojně certifikovaná firma – za jeden den zvládne i celý dům, bez odpadu a bez demontáže podlah či podhledů.');
+    if (!closed && ex.wooden) res.notes.push('Na dřevěném stropě ověřte vzduchotěsnost (parozábranu) ze strany interiéru – firma ji před aplikací posoudí.');
+    if (!closed) res.notes.push('Půda zůstane nepochozí; pro přístup ke komínu či anténě nechte vyvýšenou lávku nad úrovní izolace.');
+    return res;
+  }
+
   /* ---------- hlavní funkce ---------- */
   function recommend(item, ctx) {
     const type = C.TYPES[item.type];
@@ -416,6 +485,7 @@
     if (type.engine === 'acoustic') res = recommendAcoustic(item, prio);
     else if (type.engine === 'flat') res = recommendFlat(item, target, prio);
     else if (type.engine === 'floor') res = recommendFloor(item, prio);
+    else if (type.engine === 'blown') res = recommendBlown(item, item.variant === 'dutina_stena' ? C.U_TARGETS.wallExt[levelKey] : target, prio);
     else if (type.engine === 'cellar') res = recommendCellar(item, target, prio);
     else if (type.engine === 'over') res = recommendOver(item, target, prio);
     else if (type.engine === 'masonry') res = recommendMasonry(item, target, prio);
@@ -426,10 +496,15 @@
     res.item = item;
     res.typeInfo = type;
     res.area = geo.area;
-    res.target = target;
+    res.target = type.engine === 'blown' && item.variant === 'dutina_stena' ? C.U_TARGETS.wallExt[levelKey] : target;
 
     const wastePct = num(ctx.waste, NaN);
     res.lines = res.qtyLayers.map((q) => {
+      if (q.blown) {
+        const B = C.BLOWN[q.product]; const waste = Number.isFinite(wastePct) ? wastePct / 100 : 0.03;
+        const kg = geo.area * q.blown.kg * (1 + waste);
+        return { product: q.product, t: q.t, m2: geo.area * (1 + waste), kg, rho: q.blown.rho, blown: true, perPack: B.bagKg / q.blown.kg };
+      }
       const p = C.PRODUCTS[q.product];
       const waste = Number.isFinite(wastePct) ? wastePct / 100 : (p.form === 'role' ? 0.05 : 0.03);
       return { product: q.product, t: q.t, m2: geo.area * q.factor * (1 + waste) };
@@ -458,13 +533,17 @@
     for (const r of results) {
       if (!r) continue;
       for (const l of r.lines) {
-        const key = `${l.product}|${l.t}`;
-        const e = map.get(key) || { product: l.product, t: l.t, m2: 0 };
-        e.m2 += l.m2;
+        const key = `${l.product}|${l.t}|${l.rho || ''}`;
+        const e = map.get(key) || { product: l.product, t: l.t, m2: 0, kg: 0, rho: l.rho, blown: !!l.blown };
+        e.m2 += l.m2; e.kg += l.kg || 0;
         map.set(key, e);
       }
     }
     const insulation = [...map.values()].map((e) => {
+      if (e.blown) {
+        const B = C.BLOWN[e.product]; const packs = Math.ceil(e.kg / B.bagKg - 1e-9);
+        return { ...e, perPack: e.m2 / (e.kg / B.bagKg), packs, m3: e.m2 * e.t / 1000, price: 0, noPrice: true };
+      }
       const p = C.PRODUCTS[e.product];
       const per = p.packM2[e.t] || 1;
       const packs = Math.ceil(e.m2 / per - 1e-9);
@@ -492,7 +571,8 @@
   function subsidy(results) {
     const S = C.SUBSIDY; const areas = { wall: 0, roof: 0, attic: 0 };
     for (const r of results) {
-      const k = r && S.byType[r.item.type];
+      const bt = r && S.byType[r.item.type];
+      const k = typeof bt === 'function' ? bt(r.item) : bt;
       if (k && r.ok && r.area > 0) areas[k] += r.area;
     }
     const sum = (rates) => Object.entries(areas).reduce((s2, [k, a]) => s2 + a * (rates[k] || 0), 0);

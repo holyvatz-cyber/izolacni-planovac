@@ -157,6 +157,31 @@
       R: { 50: 1.15, 75: 1.8, 100: 2.35, 150: 4.65 },
     },
   };
+
+  /* Foukaná izolace Supafil (technické listy Supafil Loft Pro 10/2024, Supafil Frame 09/2025).
+   * Prodej v pytlích 16,6 kg; aplikuje certifikovaná firma strojně. λD závisí na objemové hmotnosti ρ. */
+  const BLOWN = {
+    supafilLoft: {
+      name: 'Supafil Loft Pro', bagKg: 16.6, desc: 'Foukaná minerální izolace ze skelné vlny bez pojiva, třída reakce na oheň A1, sesedání S1 (do 1 %).',
+      open: [{ rho: 22, lambda: 0.037 }], cavity: [{ rho: 35, lambda: 0.034 }],
+    },
+    supafilFrame: {
+      name: 'Supafil Frame', bagKg: 16.6, desc: 'Foukaná minerální izolace ze skelné vlny pro dutiny i volné plochy, A1, nastavitelná objemová hmotnost.',
+      open: [{ rho: 12, lambda: 0.042 }, { rho: 15, lambda: 0.040 }], cavity: [{ rho: 19, lambda: 0.038 }, { rho: 26, lambda: 0.034 }, { rho: 30, lambda: 0.033 }],
+    },
+  };
+  /* Volba materiálu a objemové hmotnosti podle priority zákazníka */
+  const BLOWN_PRIORITY = {
+    vykon: { open: ['supafilLoft', 22], cavity: ['supafilFrame', 30] },
+    vyvazeny: { open: ['supafilFrame', 15], cavity: ['supafilFrame', 26] },
+    cena: { open: ['supafilFrame', 12], cavity: ['supafilFrame', 19] },
+  };
+  const SUPAFIL_URL = 'https://www.supafil.cz/';
+  /* foukané materiály registrujeme i mezi produkty (název, popis, jednotka) */
+  Object.entries(BLOWN).forEach(([id, b]) => {
+    PRODUCTS[id] = { name: b.name, desc: b.desc, lambda: b.open.concat(b.cavity)[0].lambda, form: 'foukaná', packUnit: 'pytel', material: 'skelná', v: {}, blown: true };
+  });
+
   Object.values(PRODUCTS).forEach((p) => {
     p.thicknesses = Object.keys(p.v).map(Number).sort((a, b) => a - b);
     p.packM2 = {}; p.priceM2 = {};
@@ -262,7 +287,7 @@
     builtBefore: '1. 7. 2013',
     light: { label: 'NZÚ Light (zranitelné domácnosti)', cap: 250000, min: 50000, rates: { wall: 2000, roof: 2000, attic: 750 } },
     loan: { label: 'NZÚ 2026+ – bezúročný úvěr', cap: 750000, rates: { wall: 3500, roof: 3500 } },
-    byType: { etics: 'wall', venti: 'wall', drevostavba: 'wall', sikma: 'roof', nadkrokve: 'roof', plocha: 'roof', strop: 'attic' },
+    byType: { foukana: (it) => (it.variant === 'dutina_stena' ? 'wall' : 'attic'), etics: 'wall', venti: 'wall', drevostavba: 'wall', sikma: 'roof', nadkrokve: 'roof', plocha: 'roof', strop: 'attic' },
   };
 
   const TYPES = {
@@ -298,6 +323,10 @@
       label: 'Strop nad sklepem / garáží', short: 'Desky Heraklith zespodu',
       icon: 'cellar', target: 'cellar', engine: 'cellar',
     },
+    foukana: {
+      label: 'Foukaná izolace Supafil', short: 'Půdy, stropy bungalovů, dutiny',
+      icon: 'blown', target: 'ceilingAttic', engine: 'blown', badge: 'Nejrychlejší',
+    },
     podlaha: {
       label: 'Plovoucí podlaha', short: 'Kročejová izolace',
       icon: 'floor', target: null, engine: 'floor',
@@ -308,7 +337,7 @@
     },
   };
 
-  const api = { SUBSIDY, FLAT_DECKS, FLOOR_TYPES, FLOOR_LOADS, IMPACT, PRICE_LIST, VAT, BRAND, PRODUCTS, ACCESSORIES, LEVELS, U_TARGETS, PRIORITIES, EXISTING_WALLS, EXISTING_CEILINGS, TYPES };
+  const api = { BLOWN, BLOWN_PRIORITY, SUPAFIL_URL, SUBSIDY, FLAT_DECKS, FLOOR_TYPES, FLOOR_LOADS, IMPACT, PRICE_LIST, VAT, BRAND, PRODUCTS, ACCESSORIES, LEVELS, U_TARGETS, PRIORITIES, EXISTING_WALLS, EXISTING_CEILINGS, TYPES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Catalog = api;
 })(typeof window !== 'undefined' ? window : globalThis);

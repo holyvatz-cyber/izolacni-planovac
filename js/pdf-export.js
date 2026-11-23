@@ -87,7 +87,7 @@
     group('Izolace');
     data.insulation.forEach((r) => body.push([
       rich(`${r.name} · ${r.t} mm`, r.desc),
-      `${r.m2} m²`, `${r.perPack} m²/${r.unit}`,
+      r.blown ? r.m2 : `${r.m2} m²`, r.blown ? `${r.perPack} ${r.unit}` : `${r.perPack} m²/${r.unit}`,
       { content: `${r.packs} ${r.packsWord}`, styles: { fontStyle: 'bold', textColor: BLUE } },
       r.price,
     ]));
@@ -122,7 +122,8 @@
 
     doc.setFont(FONT, 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GREY);
     const notes = [];
-    if (data.totals.noPrice) notes.push('Desky Heraklith / Tektalan nejsou ve stavebním ceníku – cenu získáte u prodejce, v součtu nejsou zahrnuty.');
+    if (data.insulation.some((r) => r.blown)) notes.push('Foukanou izolaci Supafil dodává a strojně aplikuje certifikovaná firma – cenu včetně aplikace získáte na www.supafil.cz.');
+    if (data.totals.noPrice) notes.push('Položky „na dotaz“ (foukaná izolace, desky Heraklith / Tektalan) nejsou ve stavebním ceníku ani v součtu.');
     notes.push(`Ceny dle ${data.priceList}, bez slev. Skutečné ceny u prodejců se mohou lišit. Množství zahrnuje rezervu na prořez a je zaokrouhleno na celá balení.`);
     notes.forEach((n) => { const lines = doc.splitTextToSize(n, CW); doc.text(lines, M, y); y += lines.length * 3.4; });
     y += 4;

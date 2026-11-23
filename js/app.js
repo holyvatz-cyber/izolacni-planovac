@@ -10,8 +10,10 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n, d = 1) => Number(n).toLocaleString('cs-CZ', { minimumFractionDigits: d, maximumFractionDigits: d });
   const fmtU = (n) => fmt(n, 2);
-  const FORMS = { role: ['role', 'role', 'rolí'], 'balík': ['balík', 'balíky', 'balíků'], deska: ['deska', 'desky', 'desek'], 'kartuše': ['kartuše', 'kartuše', 'kartuší'] };
+  const FORMS = { role: ['role', 'role', 'rolí'], 'balík': ['balík', 'balíky', 'balíků'], deska: ['deska', 'desky', 'desek'], 'kartuše': ['kartuše', 'kartuše', 'kartuší'], pytel: ['pytel', 'pytle', 'pytlů'] };
   const unitWord = (u, n) => { const f = FORMS[u]; if (!f) return u; return n === 1 ? f[0] : n >= 2 && n <= 4 ? f[1] : f[2]; };
+  /** Cena celkem; pokud je vše „na dotaz“, vrací text místo 0 Kč. */
+  const priceOf = (agg, withVat) => (agg.price > 0 || !agg.noPrice ? kc(agg.price * (withVat ? 1 + C.VAT : 1)) : 'na dotaz');
   const kc = (n) => `${Math.round(n).toLocaleString('cs-CZ')} Kč`;
   const track = (name, params) => { try { if (window.track) window.track(name, params); } catch (e) { /* ignore */ } };
   const uid = () => Math.random().toString(36).slice(2, 9);
@@ -26,6 +28,7 @@
     floor: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 30h30"/><rect x="5" y="24" width="30" height="3" stroke="var(--accent)"/><rect x="5" y="17" width="30" height="6"/><path d="M6 17v-9M34 17v-9"/><path d="M14 12l2 3M22 12l2 3" stroke="var(--accent)"/></svg>',
     over: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 24 20 9l16 15"/><path d="M8 18 20 7l12 11" stroke="var(--accent)" stroke-width="4"/><path d="M8 22v12h24V22"/></svg>',
     cellar: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h32"/><rect x="4" y="16" width="32" height="4" stroke="var(--accent)"/><path d="M7 20v14M33 20v14M4 34h32"/><path d="M14 27h12" stroke-dasharray="2 2"/></svg>',
+    blown: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 30h32"/><path d="M6 26c2-3 4 3 6 0s4 3 6 0 4 3 6 0 4 3 6 0 4 3 4 0" stroke="var(--accent)"/><path d="M26 6v8c0 3-2 5-5 5h-4"/><path d="M14 19l3-2v4z" fill="currentColor"/><circle cx="12" cy="22" r="1" fill="var(--accent)" stroke="none"/><circle cx="9" cy="20" r="1" fill="var(--accent)" stroke="none"/></svg>',
     partition: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v30M28 5v30"/><path d="M15 9c3 2 7-2 10 0M15 15c3 2 7-2 10 0M15 21c3 2 7-2 10 0M15 27c3 2 7-2 10 0" stroke="var(--accent)"/></svg>',
   };
 
@@ -39,6 +42,7 @@
     plocha: { name: 'Plochá střecha', mode: 'rozmery', len: '12', wid: '10', area: '120', deck: 'zb', use: 'nepochozi', fixing: 'kotvena' },
     nadkrokve: { name: 'Střecha nad krokvemi', mode: 'plocha', area: '100', rafterLen: '6', roofLen: '10', sides: '2', windows: '0', winSize: '78x118', winW: '78', winH: '118', variant: 'shora', frameDepth: '140', frameWidth: '80', frameSpacing: '900', maxOver: '260' },
     sklep: { name: 'Strop nad sklepem', mode: 'rozmery', len: '10', wid: '8', area: '80', ceiling: 'beton', fire: 'ano' },
+    foukana: { name: 'Foukaná izolace', mode: 'rozmery', variant: 'bungalov', len: '12', wid: '9', area: '108', ceiling: 'tramovy', frameDepth: '180', frameWidth: '80', frameSpacing: '900' },
     podlaha: { name: 'Podlaha – obývák', mode: 'rozmery', len: '6', wid: '4.5', area: '27', floorType: 'beton', load: '200', slab: '200' },
     pricka: { name: 'Příčka', mode: 'rozmery', len: '4', height: '2.6', doors: '1', area: '10', profile: '75' },
   };
@@ -137,6 +141,27 @@
     { k: 'ceiling', label: 'Stávající strop', type: 'select', options: optionsFrom(C.EXISTING_CEILINGS), wide: true },
     { k: 'fire', label: 'Požadavek na nehořlavost', type: 'select', options: [['ano', 'Ano – garáž, kotelna, úniková cesta'], ['ne', 'Ne – běžný sklep']], wide: true },
   ];
+  const BLOWN_VARIANTS = [
+    ['bungalov', 'Strop bungalovu / půda s trámy – mezi trámy i nad ně'],
+    ['puda', 'Volně na strop nepochozí půdy (betonový či rovný strop)'],
+    ['dutina_strop', 'Uzavřená dutina stropu nebo podlahy (pochozí půda, trámový strop)'],
+    ['dutina_stena', 'Uzavřená dutina rámové stěny (dřevostavba)'],
+  ];
+  const isWallV = (it) => it.variant === 'dutina_stena';
+  const hasFrame = (it) => it.variant !== 'puda';
+  FIELDS.foukana = [
+    { k: 'variant', label: 'Kam se bude foukat', type: 'select', options: BLOWN_VARIANTS, wide: true, help: 'blownVariant' },
+    { k: 'len', label: 'Délka', unit: 'm', mode: 'rozmery', show: (it) => !isWallV(it) },
+    { k: 'wid', label: 'Šířka', unit: 'm', mode: 'rozmery', show: (it) => !isWallV(it) },
+    { k: 'len', label: 'Délka stěn', unit: 'm', mode: 'rozmery', show: isWallV },
+    { k: 'wid', label: 'Výška stěn', unit: 'm', mode: 'rozmery', show: isWallV },
+    { k: 'area', label: 'Plocha', unit: 'm²', mode: 'plocha' },
+    { k: 'ceiling', label: 'Stávající strop', type: 'select', options: optionsFrom(C.EXISTING_CEILINGS), wide: true, show: (it) => !isWallV(it) },
+    { sub: 'Trámy / sloupky', show: hasFrame },
+    { k: 'frameDepth', label: 'Výška trámu / hloubka dutiny', unit: 'mm', show: hasFrame },
+    { k: 'frameWidth', label: 'Šířka trámu', unit: 'mm', show: hasFrame },
+    { k: 'frameSpacing', label: 'Rozteč trámů', unit: 'mm', show: hasFrame },
+  ];
   FIELDS.venti = FIELDS.etics;
 
   /* Nápověda s ilustracemi u vybraných polí */
@@ -153,6 +178,7 @@
     height: ['Výška', 'Výška zateplované stěny. Plochu štítů přidejte zvlášť nebo použijte režim „Znám plochu“.', SVG_FACADE],
     maxExtra: ['Vrstva pod krokvemi', 'Izolace na roštu pod krokvemi přeruší tepelné mosty přes dřevo. Každý centimetr ale ubere výšku podkroví.', SVG_RAFTERS],
     winSize: ['Rozměr střešního okna', 'Rozměr najdete na typovém štítku v horní části rámu okna (po otevření křídla). Bývá uveden v cm jako šířka × výška, případně kódem výrobce – např. 78 × 118 cm. Jiný rozměr zadejte volbou „Jiný rozměr“.', '<svg viewBox="0 0 220 110"><path d="M20 100 110 15l90 85" fill="none" stroke="var(--ink-3)" stroke-width="3"/><rect x="88" y="45" width="44" height="40" fill="var(--ki-cyan-20)" stroke="var(--ki-blue-acc)" stroke-width="2"/><rect x="96" y="49" width="28" height="6" fill="#fff" stroke="var(--ki-cyan)"/><path d="M88 92h44" stroke="var(--ki-cyan)" stroke-width="2"/><text x="96" y="104" font-size="11" fill="var(--ink)">šířka</text><path d="M140 45v40" stroke="var(--ki-cyan)" stroke-width="2"/><text x="145" y="69" font-size="11" fill="var(--ink)">výška</text><text x="60" y="42" font-size="10" fill="var(--ink-2)">štítek</text></svg>'],
+    blownVariant: ['Kam foukanou izolaci', 'Strop bungalovu: izolace se nafouká mezi trámy a souvislou vrstvou i přes ně – nejčastější a nejúčinnější řešení. Volně na strop: pro betonové či rovné stropy nepochozí půdy. Uzavřená dutina: izolace se fouká otvory do prostoru mezi podhledem a podlahou (nebo mezi deskami stěny), bez demontáže.', '<svg viewBox="0 0 220 100"><rect x="10" y="78" width="200" height="8" fill="#cfd6dc"/><rect x="30" y="46" width="14" height="32" fill="var(--wood)"/><rect x="100" y="46" width="14" height="32" fill="var(--wood)"/><rect x="170" y="46" width="14" height="32" fill="var(--wood)"/><path d="M10 78V34c10-6 20 6 30 0s20 6 30 0 20 6 30 0 20 6 30 0 20 6 30 0 20 6 30 0 10 4 10 0v44z" fill="var(--wool)" opacity=".75"/><text x="14" y="26" font-size="11" fill="var(--ink)">souvislá vrstva i přes trámy</text></svg>'],
     slab: ['Tloušťka stropu', 'Tloušťka nosné železobetonové desky bez podlahy a omítek – najdete ji v projektu domu (běžně 150–250 mm).', ''],
   };
 
@@ -191,8 +217,9 @@
 
   /* ---------- krok 2 ---------- */
   function renderTypeGrid() {
-    $('#type-grid').innerHTML = Object.entries(C.TYPES).map(([k, t]) => `
-      <button type="button" class="type-card" data-add="${k}">${ICONS[t.icon]}<strong>${esc(t.label)}</strong><small>${esc(t.short)}</small></button>`).join('');
+    const entries = Object.entries(C.TYPES).sort((a, b) => (b[1].badge ? 1 : 0) - (a[1].badge ? 1 : 0));
+    $('#type-grid').innerHTML = entries.map(([k, t]) => `
+      <button type="button" class="type-card${t.badge ? ' featured' : ''}" data-add="${k}">${t.badge ? `<span class="type-badge">${esc(t.badge)}</span>` : ''}${ICONS[t.icon]}<strong>${esc(t.label)}</strong><small>${esc(t.short)}</small></button>`).join('');
   }
 
   const RANGES = {
@@ -344,6 +371,42 @@
       g += `<rect x="12" y="${y - 5}" width="6" height="${hi + hs + 5}" fill="${wool}" stroke="var(--wool-line)" stroke-width=".6"/>`;
       g += `<rect x="8" y="10" width="4" height="${H - 18}" fill="#c97a5a"/>`;
       g += `<text x="${W - 10}" y="${y - 10}" text-anchor="end" font-size="9" fill="var(--ink-3)">${heavy ? 'nášlapná vrstva · roznášecí deska' : 'suchá podlaha'}</text>`;
+    } else if (engine === 'blown') {
+      const v = res.item.variant || 'puda';
+      const fluffy = (x, y, w, h) => {
+        let d = `M${x} ${y + h}V${y + 6}`;
+        for (let i = x; i < x + w; i += 12) d += ` q3 -6 6 0 q3 6 6 0`;
+        return `<path d="${d}V${y + h}z" fill="${wool}" stroke="var(--wool-line)" stroke-width=".6"/>`;
+      };
+      if (v === 'dutina_stena') {
+        g += `<rect x="60" y="10" width="8" height="${H - 20}" fill="#d7b98f"/><rect x="152" y="10" width="8" height="${H - 20}" fill="#cfd6dc"/>`;
+        g += `<rect x="68" y="10" width="84" height="${H - 20}" fill="${wool}"/>`;
+        for (let y2 = 18; y2 < H - 14; y2 += 10) g += `<circle cx="${80 + (y2 % 30)}" cy="${y2}" r="1.3" fill="var(--wool-line)"/><circle cx="${120 + (y2 % 20)}" cy="${y2 + 4}" r="1.3" fill="var(--wool-line)"/>`;
+        g += `<circle cx="110" cy="40" r="5" fill="var(--card)" stroke="var(--ki-cyan)" stroke-width="2"/><path d="M110 40H190" stroke="var(--ki-cyan)" stroke-width="4" stroke-linecap="round"/>`;
+        g += `<text x="56" y="${H - 2}" text-anchor="end" font-size="9" fill="var(--ink-3)">exteriér</text><text x="164" y="${H - 2}" font-size="9" fill="var(--ink-3)">interiér</text>`;
+      } else {
+        const total = res.layers.reduce((s2, l) => s2 + l.total, 0);
+        const sc = Math.min(0.32, 95 / total);
+        const base = H - 24;
+        g += `<rect x="8" y="${base}" width="${W - 16}" height="12" fill="${(C.EXISTING_CEILINGS[res.item.ceiling] || {}).wooden ? '#d7b98f' : 'url(#conc)'}"/>`;
+        const ht = total * sc;
+        if (v === 'dutina_strop') {
+          const hj = res.layers[0].total * sc;
+          g += `<rect x="8" y="${base - hj}" width="${W - 16}" height="${hj}" fill="${wool}"/>`;
+          [40, W / 2, W - 40].forEach((cx) => { g += `<rect x="${cx - 7}" y="${base - hj}" width="14" height="${hj}" fill="var(--wood)" stroke="#7a5532" stroke-width=".6"/>`; });
+          g += `<rect x="8" y="${base - hj - 7}" width="${W - 16}" height="7" fill="#c9a26e"/>`;
+          g += `<text x="${W - 10}" y="${base - hj - 12}" text-anchor="end" font-size="9" fill="var(--ink-3)">podlaha zůstává</text>`;
+        } else {
+          g += fluffy(8, base - ht, W - 16, ht);
+          if (v === 'bungalov') {
+            const hj = res.layers[0].total * sc;
+            [40, W / 2, W - 40].forEach((cx) => { g += `<rect x="${cx - 7}" y="${base - hj}" width="14" height="${hj}" fill="var(--wood)" stroke="#7a5532" stroke-width=".6"/>`; });
+          }
+          g += `<path d="M${W - 30} ${base - ht - 26} q-10 6 -24 10" fill="none" stroke="var(--ki-cyan)" stroke-width="4" stroke-linecap="round"/>`;
+          g += `<text x="12" y="${base - ht - 10}" font-size="9" fill="var(--ink-3)">nepochozí půda</text>`;
+        }
+        g += `<text x="${W - 10}" y="${H - 2}" text-anchor="end" font-size="9" fill="var(--ink-3)">vytápěná místnost</text>`;
+      }
     } else if (engine === 'cellar') {
       const t = res.layers[0].total; const s2 = Math.min(0.45, 70 / t);
       g += `<rect x="8" y="30" width="${W - 16}" height="30" fill="url(#conc)"/>`;
@@ -410,6 +473,7 @@
 
   function levelsHtml(item) {
     if (!C.TYPES[item.type].target) return '';
+    if (item.type === 'foukana' && /^dutina/.test(item.variant || '')) return '';
     return `<div class="levels" role="group" aria-label="Porovnání úrovní">${Object.entries(C.LEVELS).map(([k, l]) => {
       const r = K.recommend(item, { ...ctx(), level: k });
       const t = r ? r.layers.reduce((s, x) => s + x.total, 0) : 0;
@@ -421,7 +485,7 @@
     const t = res.typeInfo;
     const layers = res.layers.map((l) => {
       const p = C.PRODUCTS[l.product];
-      return `<div class="layer"><span class="sw"></span><div><b>${esc(p.name)}</b> <small>${esc(l.name)} · λ = ${fmt(p.lambda, 3)} W/(mK)</small></div>
+      return `<div class="layer"><span class="sw"></span><div><b>${esc(p.name)}</b> <small>${esc(l.name)} · λ = ${fmt(l.lambda || p.lambda, 3)} W/(mK)${l.rho ? ` · ${l.rho} kg/m³` : ''}</small></div>
         <span class="t">${l.parts.join(' + ')} mm</span></div>`;
     }).join('');
     const lines = res.lines.map((l) => `${esc(C.PRODUCTS[l.product].name)} ${l.t} mm: ${fmt(l.m2)} m²`).join(' · ');
@@ -446,7 +510,7 @@
     $('#summary-stats').innerHTML = n ? `
       <div><b>${n}</b><span>${n === 1 ? 'konstrukce' : n <= 4 ? 'konstrukce' : 'konstrukcí'}</span></div>
       <div><b>${fmt(agg.totalArea, 0)} m²</b><span>plocha</span></div>
-      <div><b>≈ ${kc(agg.price * (1 + C.VAT))}</b><span>vč. DPH</span></div>`
+      <div><b>${agg.price > 0 ? `≈ ${kc(agg.price * (1 + C.VAT))}` : priceOf(agg, true)}</b><span>vč. DPH</span></div>`
       : '<div><b>Začněte výběrem konstrukce</b><span>níže na stránce</span></div>';
   }
 
@@ -466,7 +530,7 @@
     const tiles = [
       [fmt(agg.totalArea, 0) + ' m²', 'plocha konstrukcí'],
       [agg.totalPacks, 'balení a desek izolace'],
-      [kc(agg.price * (1 + C.VAT)), 'orientační cena materiálu vč. DPH', 'hl'],
+      [priceOf(agg, true), agg.noPrice && agg.price > 0 ? 'orientační cena vč. DPH (bez položek na dotaz)' : 'orientační cena materiálu vč. DPH', 'hl'],
       withTarget.length ? [`${okCount}/${withTarget.length}`, 'konstrukcí splňuje cíl'] : [results.length, 'konstrukcí'],
     ];
     if (yearly > 0) tiles.splice(3, 0, [`≈ ${kc(yearly)}`, `roční úspora za teplo (${fmt(kwh / 1000, 1)} MWh)`, 'save']);
@@ -477,13 +541,19 @@
       const a = K.aggregate(rs);
       const ok = rs.filter((r) => r.target != null && r.ok).length; const tot = rs.filter((r) => r.target != null).length;
       return `<button type="button" class="variant ${state.project.priority === k ? 'on' : ''}" data-prio="${k}">
-        <strong>${esc(pr.label)}</strong><span class="vp">${kc(a.price * (1 + C.VAT))}</span>
+        <strong>${esc(pr.label)}</strong><span class="vp">${priceOf(a, true)}</span>
         <small>${esc(pr.sub)}${tot ? ` · cíl splněn ${ok}/${tot}` : ''}</small></button>`;
     }).join('')}</div>`;
 
     let rows = '<tr class="group"><td colspan="5">Izolace</td></tr>';
     rows += agg.insulation.map((l) => {
       const p = C.PRODUCTS[l.product];
+      if (l.blown) {
+        return `<tr><td><div class="pname">${esc(p.name)} · ${l.t} mm · ${l.rho} kg/m³</div><div class="pdesc">Foukaná izolace – aplikuje certifikovaná firma Supafil, ${fmt(l.m2, 0)} m²</div></td>
+        <td class="num">${fmt(l.kg, 0)} kg</td><td class="num">${fmt(C.BLOWN[l.product].bagKg, 1)} kg/pytel</td>
+        <td class="num"><span class="packs">${l.packs}</span> ${esc(unitWord('pytel', l.packs))}</td>
+        <td class="num"><small>na dotaz<br>vč. aplikace</small></td></tr>`;
+      }
       return `<tr><td><div class="pname">${esc(p.name)} · ${l.t} mm</div><div class="pdesc">${esc(p.desc)}</div></td>
         <td class="num">${fmt(l.m2)} m²</td><td class="num">${fmt(l.perPack, 2)} m²/${esc(p.packUnit)}</td>
         <td class="num"><span class="packs">${l.packs}</span> ${esc(unitWord(p.packUnit, l.packs))}</td>
@@ -502,8 +572,8 @@
     $('#shopping').innerHTML = `<div class="table-wrap"><table>
       <thead><tr><th>Produkt</th><th class="num">Potřeba</th><th class="num">Balení</th><th class="num">Koupit</th><th class="num">Cena bez DPH</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td colspan="4">Celkem bez DPH<br><small>vč. DPH ${Math.round(C.VAT * 100)} %</small></td><td class="num"><b>${kc(agg.price)}</b><br><small>${kc(agg.price * (1 + C.VAT))}</small></td></tr></tfoot></table></div>
-      ${agg.noPrice ? '<p class="hint">Desky Heraklith / Tektalan nejsou ve stavebním ceníku – cenu získáte u prodejce, v součtu nejsou zahrnuty.</p>' : ''}
+      <tfoot><tr><td colspan="4">Celkem bez DPH<br><small>vč. DPH ${Math.round(C.VAT * 100)} %</small></td><td class="num"><b>${priceOf(agg)}</b><br><small>${priceOf(agg, true)}</small></td></tr></tfoot></table></div>
+      ${agg.noPrice ? `<p class="hint">${agg.insulation.some((l) => l.blown) ? `Foukanou izolaci Supafil dodává a strojně aplikuje certifikovaná firma – cenu včetně aplikace získáte na <a href="${esc(C.SUPAFIL_URL)}" target="_blank" rel="noopener">supafil.cz</a>. ` : ''}${agg.insulation.some((l) => l.noPrice && !l.blown) ? 'Desky Heraklith / Tektalan nejsou ve stavebním ceníku – cenu získáte u prodejce. ' : ''}Položky „na dotaz“ nejsou v součtu zahrnuty.</p>` : ''}
       <p class="hint">Ceny dle ${esc(C.PRICE_LIST)}. Skutečné ceny u prodejců se mohou lišit – pro individuální nabídku kontaktujte prodejce.</p>`;
 
     $('#results').innerHTML = results.map(resultCard).join('') || '<div class="empty">Přidejte konstrukci v kroku 2.</div>';
@@ -528,9 +598,9 @@
   function shoppingText() {
     if (!lastAgg) return '';
     const out = [`${state.project.name || 'Plánovač zateplení'} – nákupní seznam`, ''];
-    lastAgg.insulation.forEach((l) => { const p = C.PRODUCTS[l.product]; out.push(`${p.name} ${l.t} mm – ${l.packs} ${unitWord(p.packUnit, l.packs)} (${fmt(l.m2)} m²)`); });
+    lastAgg.insulation.forEach((l) => { const p = C.PRODUCTS[l.product]; out.push(l.blown ? `${p.name} ${l.t} mm (${l.rho} kg/m³) – ${fmt(l.kg, 0)} kg = ${l.packs} ${unitWord('pytel', l.packs)}, aplikace certifikovanou firmou (${fmt(l.m2, 0)} m²)` : `${p.name} ${l.t} mm – ${l.packs} ${unitWord(p.packUnit, l.packs)} (${fmt(l.m2)} m²)`); });
     lastAgg.accessories.forEach((a) => { const d = C.ACCESSORIES[a.id]; out.push(`${d.name} – ${a.qty} ${unitWord(d.unit, a.qty)}`); });
-    out.push(`Orientační cena: ${kc(lastAgg.price)} bez DPH (${kc(lastAgg.price * (1 + C.VAT))} vč. DPH) – ${C.PRICE_LIST}`);
+    out.push(`Orientační cena: ${priceOf(lastAgg)} bez DPH (${priceOf(lastAgg, true)} vč. DPH) – ${C.PRICE_LIST}`);
     out.push('', 'Konstrukce:');
     state.items.forEach((i) => { const r = K.recommend(i, ctx()); if (r) out.push(`• ${i.name} (${fmt(r.area)} m²): ${r.layers.map((l) => `${C.PRODUCTS[l.product].name} ${l.parts.join('+')} mm`).join(', ')}${r.U != null ? `, U = ${fmtU(r.U)}` : ''}`); });
     return out.join('\n');
@@ -564,6 +634,7 @@
       priceList: C.PRICE_LIST,
       insulation: agg.insulation.map((l) => {
         const p = C.PRODUCTS[l.product];
+        if (l.blown) return { name: `${p.name} · ${l.rho} kg/m³`, desc: `Foukaná izolace, aplikuje certifikovaná firma Supafil – ${fmt(l.m2, 0)} m²`, t: l.t, m2: `${fmt(l.kg, 0)} kg`, perPack: fmt(C.BLOWN[l.product].bagKg, 1), unit: 'kg/pytel', packs: l.packs, packsWord: unitWord('pytel', l.packs), price: 'na dotaz', blown: true };
         return { name: p.name, desc: p.desc, t: l.t, m2: fmt(l.m2), perPack: fmt(l.perPack, 2), unit: p.packUnit, packs: l.packs, packsWord: unitWord(p.packUnit, l.packs), price: l.noPrice ? 'na dotaz' : kc(l.price) };
       }),
       accessories: agg.accessories.map((a) => {
@@ -572,7 +643,7 @@
       }),
       totals: {
         area: `${fmt(agg.totalArea, 0)} m²`, packs: agg.totalPacks, vatPct,
-        price: kc(agg.price), vat: kc(agg.price * C.VAT), priceVat: kc(agg.price * (1 + C.VAT)),
+        price: priceOf(agg), vat: agg.price > 0 || !agg.noPrice ? kc(agg.price * C.VAT) : '—', priceVat: priceOf(agg, true),
         saving: kwh > 0 ? `≈ ${kc(kwh * energyPrice())}` : '', noPrice: agg.noPrice,
       },
       constructions: results.map((r) => ({

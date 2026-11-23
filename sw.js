@@ -1,6 +1,6 @@
 /* Service worker – umožní používat plánovač i bez připojení (např. na stavbě).
  * Při změně souborů zvyšte VERSION, aby si prohlížeče stáhly novou verzi. */
-const VERSION = 'planovac-v5';
+const VERSION = 'planovac-v6';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/app.css', 'css/fonts.css',

@@ -6,6 +6,7 @@ Webová aplikace pro koncové zákazníky. Zákazník zadá konstrukce a rozměr
 Stačí otevřít `index.html` v prohlížeči. Aplikace nemá build krok ani závislosti a dá se nasadit na libovolný statický hosting (třeba GitHub Pages).
 
 ## Co umí
+- **Foukaná izolace Supafil** (Loft Pro, Frame) pro strop bungalovu mezi trámy i přes ně, volné foukání na strop půdy a uzavřené dutiny stropů a rámových stěn. Plánovač určí tloušťku po sesednutí i tloušťku foukání, objemovou hmotnost, spotřebu v kg a počet pytlů (16,6 kg). Data pocházejí z technických listů Supafil Loft Pro 10/2024 a Supafil Frame 09/2025. Supafil aplikuje certifikovaná firma, proto má cenu „na dotaz“.
 - **10 typů konstrukcí:** šikmá střecha mezi a pod krokvemi, šikmá střecha nad krokvemi (přiznaný krov nebo rekonstrukce shora), strop pod půdou (pochozí i nepochozí), strop nad sklepem nebo garáží (Tektalan A2-SmartTec, Heratekta), kontaktní fasáda ETICS, provětrávaná fasáda, stěna dřevostavby, plochá střecha, plovoucí podlaha (kročejová izolace) a akustická příčka.
 - **3 úrovně cíle** podle ČSN 73 0540-2: požadovaná, doporučená a pasivní.
 - **3 priority:** nejtenčí vrstva, vyvážené řešení, nejnižší cena.

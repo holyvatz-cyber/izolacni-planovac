@@ -157,7 +157,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 1.6rem; }
 /* Type picker */
 .add-block { margin-top: 1.4rem; }
 .add-title { color: var(--ink-2); margin-bottom: .8rem; text-transform: uppercase; }
-.type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .7rem; }
+.type-grid { padding-top: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .7rem; }
 .type-card { display: flex; flex-direction: column; align-items: flex-start; gap: .35rem; text-align: left; font: inherit; color: var(--ink); background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius); padding: .9rem; cursor: pointer; transition: border-color .15s, background .15s, transform .15s, box-shadow .15s; position: relative; }
 .type-card::after { content: "+"; position: absolute; top: .5rem; right: .7rem; font-weight: 700; color: var(--ki-blue); font-size: 1.2rem; }
 .type-card:hover, .type-card:focus-visible { border-color: var(--ki-blue); background: var(--brand-soft); outline: none; transform: translateY(-2px); box-shadow: var(--shadow); }
@@ -358,3 +358,7 @@ tr.group td { background: var(--bg); font-weight: 700; font-size: .78rem; color:
 .btn.pdf-btn { background: #fff; color: var(--ki-blue-acc); text-transform: uppercase; letter-spacing: .03em; font-family: var(--narrow); font-weight: 700; font-size: 1.2rem; }
 .btn.pdf-btn:hover { background: var(--ki-cyan-20); }
 .btn[data-pdf][aria-busy="true"] { opacity: .7; cursor: progress; }
+
+/* Zvýrazněná karta (foukaná izolace) */
+.type-card.featured { border-color: var(--ki-cyan); background: var(--brand-soft); }
+.type-badge { position: absolute; top: -9px; left: .8rem; background: var(--ki-yellow); color: var(--ki-blue-acc); font: 700 .7rem var(--narrow); text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; transform: skewX(-12deg); }
