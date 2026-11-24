@@ -34,7 +34,7 @@ U plochých střech je horní vrstva tužší deska (Norm u nepochozí, Top u ob
 
 Pokud první produkt v řadě cíl nesplní (např. kvůli výšce krokví), plánovač automaticky zkusí další, výkonnější produkt.
 
-Ceny v aplikaci jsou orientační podle ceníku. Zákazník vidí cenu bez DPH i s DPH 21 % a upozornění, že skutečné ceny u prodejců se liší.
+Ceny se ve výchozím stavu **nezobrazují**, protože obchodníci nabízejí individuální ceny. Zapnete je nastavením `BRAND.showPrices = true` v `js/catalog.js`. Ceny jsou orientační podle ceníku. Zákazník vidí cenu bez DPH i s DPH 21 % a upozornění, že skutečné ceny u prodejců se liší.
 
 V `BRAND.contactUrl` nastavte odkaz pro tlačítko „Poptat u prodejce“.
 

@@ -8,6 +8,7 @@
     appName: 'Plánovač zateplení',
     company: 'Knauf Insulation',
     contactUrl: '#',
+    showPrices: false, // true = zobrazit orientační ceny z ceníku (nákupní seznam, PDF, souhrny)
     gtmId: '', // např. 'GTM-XXXXXXX' – zapne měření návštěvnosti (se souhlasem)
   };
 

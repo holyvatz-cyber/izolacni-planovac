@@ -13,6 +13,7 @@
   const FORMS = { role: ['role', 'role', 'rolí'], 'balík': ['balík', 'balíky', 'balíků'], deska: ['deska', 'desky', 'desek'], 'kartuše': ['kartuše', 'kartuše', 'kartuší'], pytel: ['pytel', 'pytle', 'pytlů'] };
   const unitWord = (u, n) => { const f = FORMS[u]; if (!f) return u; return n === 1 ? f[0] : n >= 2 && n <= 4 ? f[1] : f[2]; };
   /** Cena celkem; pokud je vše „na dotaz“, vrací text místo 0 Kč. */
+  const SHOW_PRICES = C.BRAND.showPrices === true;
   const priceOf = (agg, withVat) => (agg.price > 0 || !agg.noPrice ? kc(agg.price * (withVat ? 1 + C.VAT : 1)) : 'na dotaz');
   const kc = (n) => `${Math.round(n).toLocaleString('cs-CZ')} Kč`;
   const track = (name, params) => { try { if (window.track) window.track(name, params); } catch (e) { /* ignore */ } };
@@ -510,7 +511,7 @@
     $('#summary-stats').innerHTML = n ? `
       <div><b>${n}</b><span>${n === 1 ? 'konstrukce' : n <= 4 ? 'konstrukce' : 'konstrukcí'}</span></div>
       <div><b>${fmt(agg.totalArea, 0)} m²</b><span>plocha</span></div>
-      <div><b>${agg.price > 0 ? `≈ ${kc(agg.price * (1 + C.VAT))}` : priceOf(agg, true)}</b><span>vč. DPH</span></div>`
+      ${SHOW_PRICES ? `<div><b>${agg.price > 0 ? `≈ ${kc(agg.price * (1 + C.VAT))}` : priceOf(agg, true)}</b><span>vč. DPH</span></div>` : `<div><b>${agg.totalPacks}</b><span>balení k nákupu</span></div>`}`
       : '<div><b>Začněte výběrem konstrukce</b><span>níže na stránce</span></div>';
   }
 
@@ -529,11 +530,11 @@
     const yearly = kwh * energyPrice();
     const tiles = [
       [fmt(agg.totalArea, 0) + ' m²', 'plocha konstrukcí'],
-      [agg.totalPacks, 'balení a desek izolace'],
-      [priceOf(agg, true), agg.noPrice && agg.price > 0 ? 'orientační cena vč. DPH (bez položek na dotaz)' : 'orientační cena materiálu vč. DPH', 'hl'],
+      [agg.totalPacks, 'balení a desek izolace', SHOW_PRICES ? '' : 'hl'],
+      ...(SHOW_PRICES ? [[priceOf(agg, true), agg.noPrice && agg.price > 0 ? 'orientační cena vč. DPH (bez položek na dotaz)' : 'orientační cena materiálu vč. DPH', 'hl']] : []),
       withTarget.length ? [`${okCount}/${withTarget.length}`, 'konstrukcí splňuje cíl'] : [results.length, 'konstrukcí'],
     ];
-    if (yearly > 0) tiles.splice(3, 0, [`≈ ${kc(yearly)}`, `roční úspora za teplo (${fmt(kwh / 1000, 1)} MWh)`, 'save']);
+    if (yearly > 0) tiles.splice(tiles.length - 1, 0, [`≈ ${kc(yearly)}`, `roční úspora za teplo (${fmt(kwh / 1000, 1)} MWh)`, 'save']);
     $('#tiles').innerHTML = tiles.map(([b, s, c]) => `<div class="tile ${c || ''}"><b>${b}</b><span>${s}</span></div>`).join('');
 
     $('#variants').innerHTML = `<div class="variants-title">Porovnejte varianty materiálu</div><div class="variant-grid">${Object.entries(C.PRIORITIES).map(([k, pr]) => {
@@ -541,40 +542,44 @@
       const a = K.aggregate(rs);
       const ok = rs.filter((r) => r.target != null && r.ok).length; const tot = rs.filter((r) => r.target != null).length;
       return `<button type="button" class="variant ${state.project.priority === k ? 'on' : ''}" data-prio="${k}">
-        <strong>${esc(pr.label)}</strong><span class="vp">${priceOf(a, true)}</span>
+        <strong>${esc(pr.label)}</strong>${SHOW_PRICES ? `<span class="vp">${priceOf(a, true)}</span>` : `<span class="vprod">${esc([...new Set(rs.flatMap((r) => r.layers.map((l) => C.PRODUCTS[l.product].name)))].slice(0, 3).join(', '))}</span>`}
         <small>${esc(pr.sub)}${tot ? ` · cíl splněn ${ok}/${tot}` : ''}</small></button>`;
     }).join('')}</div>`;
 
-    let rows = '<tr class="group"><td colspan="5">Izolace</td></tr>';
+    const cols = SHOW_PRICES ? 5 : 4;
+    const priceTd = (html) => (SHOW_PRICES ? `<td class="num">${html}</td>` : '');
+    let rows = `<tr class="group"><td colspan="${cols}">Izolace</td></tr>`;
     rows += agg.insulation.map((l) => {
       const p = C.PRODUCTS[l.product];
       if (l.blown) {
         return `<tr><td><div class="pname">${esc(p.name)} · ${l.t} mm · ${l.rho} kg/m³</div><div class="pdesc">Foukaná izolace – aplikuje certifikovaná firma Supafil, ${fmt(l.m2, 0)} m²</div></td>
         <td class="num">${fmt(l.kg, 0)} kg</td><td class="num">${fmt(C.BLOWN[l.product].bagKg, 1)} kg/pytel</td>
         <td class="num"><span class="packs">${l.packs}</span> ${esc(unitWord('pytel', l.packs))}</td>
-        <td class="num"><small>na dotaz<br>vč. aplikace</small></td></tr>`;
+        ${priceTd('<small>na dotaz<br>vč. aplikace</small>')}</tr>`;
       }
       return `<tr><td><div class="pname">${esc(p.name)} · ${l.t} mm</div><div class="pdesc">${esc(p.desc)}</div></td>
         <td class="num">${fmt(l.m2)} m²</td><td class="num">${fmt(l.perPack, 2)} m²/${esc(p.packUnit)}</td>
         <td class="num"><span class="packs">${l.packs}</span> ${esc(unitWord(p.packUnit, l.packs))}</td>
-        <td class="num">${l.noPrice ? '<small>na dotaz</small>' : kc(l.price)}</td></tr>`;
+        ${priceTd(l.noPrice ? '<small>na dotaz</small>' : kc(l.price))}</tr>`;
     }).join('');
     if (agg.accessories.length) {
-      rows += '<tr class="group"><td colspan="5">Vzduchotěsnost a příslušenství</td></tr>';
+      rows += `<tr class="group"><td colspan="${cols}">Vzduchotěsnost a příslušenství</td></tr>`;
       rows += agg.accessories.map((a) => {
         const d = C.ACCESSORIES[a.id];
         return `<tr><td><div class="pname">${esc(d.name)}</div><div class="pdesc">${esc(d.desc)}</div></td>
           <td class="num">${fmt(a.need, 0)} ${esc(d.perLabel)}</td><td class="num">${d.perUnit} ${esc(d.perLabel)}/${esc(d.unit)}</td>
           <td class="num"><span class="packs">${a.qty}</span> ${esc(unitWord(d.unit, a.qty))}</td>
-          <td class="num">${kc(a.price)}</td></tr>`;
+          ${priceTd(kc(a.price))}</tr>`;
       }).join('');
     }
     $('#shopping').innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>Produkt</th><th class="num">Potřeba</th><th class="num">Balení</th><th class="num">Koupit</th><th class="num">Cena bez DPH</th></tr></thead>
+      <thead><tr><th>Produkt</th><th class="num">Potřeba</th><th class="num">Balení</th><th class="num">Koupit</th>${SHOW_PRICES ? '<th class="num">Cena bez DPH</th>' : ''}</tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td colspan="4">Celkem bez DPH<br><small>vč. DPH ${Math.round(C.VAT * 100)} %</small></td><td class="num"><b>${priceOf(agg)}</b><br><small>${priceOf(agg, true)}</small></td></tr></tfoot></table></div>
-      ${agg.noPrice ? `<p class="hint">${agg.insulation.some((l) => l.blown) ? `Foukanou izolaci Supafil dodává a strojně aplikuje certifikovaná firma – cenu včetně aplikace získáte na <a href="${esc(C.SUPAFIL_URL)}" target="_blank" rel="noopener">supafil.cz</a>. ` : ''}${agg.insulation.some((l) => l.noPrice && !l.blown) ? 'Desky Heraklith / Tektalan nejsou ve stavebním ceníku – cenu získáte u prodejce. ' : ''}Položky „na dotaz“ nejsou v součtu zahrnuty.</p>` : ''}
-      <p class="hint">Ceny dle ${esc(C.PRICE_LIST)}. Skutečné ceny u prodejců se mohou lišit – pro individuální nabídku kontaktujte prodejce.</p>`;
+      ${SHOW_PRICES ? `<tfoot><tr><td colspan="4">Celkem bez DPH<br><small>vč. DPH ${Math.round(C.VAT * 100)} %</small></td><td class="num"><b>${priceOf(agg)}</b><br><small>${priceOf(agg, true)}</small></td></tr></tfoot>` : ''}</table></div>
+      ${!SHOW_PRICES && agg.insulation.some((l) => l.blown) ? `<p class="hint">Foukanou izolaci Supafil dodává a strojně aplikuje certifikovaná firma – kontakty najdete na <a href="${esc(C.SUPAFIL_URL)}" target="_blank" rel="noopener">supafil.cz</a>.</p>` : ''}
+      ${!SHOW_PRICES ? '<p class="hint">Množství zahrnuje rezervu na prořez a je zaokrouhlené na celá balení. Cenovou nabídku vám připraví prodejce.</p>' : ''}
+      ${SHOW_PRICES && agg.noPrice ? `<p class="hint">${agg.insulation.some((l) => l.blown) ? `Foukanou izolaci Supafil dodává a strojně aplikuje certifikovaná firma – cenu včetně aplikace získáte na <a href="${esc(C.SUPAFIL_URL)}" target="_blank" rel="noopener">supafil.cz</a>. ` : ''}${agg.insulation.some((l) => l.noPrice && !l.blown) ? 'Desky Heraklith / Tektalan nejsou ve stavebním ceníku – cenu získáte u prodejce. ' : ''}Položky „na dotaz“ nejsou v součtu zahrnuty.</p>` : ''}
+      ${SHOW_PRICES ? `<p class="hint">Ceny dle ${esc(C.PRICE_LIST)}. Skutečné ceny u prodejců se mohou lišit – pro individuální nabídku kontaktujte prodejce.</p>` : ''}`;
 
     $('#results').innerHTML = results.map(resultCard).join('') || '<div class="empty">Přidejte konstrukci v kroku 2.</div>';
 
@@ -600,7 +605,7 @@
     const out = [`${state.project.name || 'Plánovač zateplení'} – nákupní seznam`, ''];
     lastAgg.insulation.forEach((l) => { const p = C.PRODUCTS[l.product]; out.push(l.blown ? `${p.name} ${l.t} mm (${l.rho} kg/m³) – ${fmt(l.kg, 0)} kg = ${l.packs} ${unitWord('pytel', l.packs)}, aplikace certifikovanou firmou (${fmt(l.m2, 0)} m²)` : `${p.name} ${l.t} mm – ${l.packs} ${unitWord(p.packUnit, l.packs)} (${fmt(l.m2)} m²)`); });
     lastAgg.accessories.forEach((a) => { const d = C.ACCESSORIES[a.id]; out.push(`${d.name} – ${a.qty} ${unitWord(d.unit, a.qty)}`); });
-    out.push(`Orientační cena: ${priceOf(lastAgg)} bez DPH (${priceOf(lastAgg, true)} vč. DPH) – ${C.PRICE_LIST}`);
+    if (SHOW_PRICES) out.push(`Orientační cena: ${priceOf(lastAgg)} bez DPH (${priceOf(lastAgg, true)} vč. DPH) – ${C.PRICE_LIST}`);
     out.push('', 'Konstrukce:');
     state.items.forEach((i) => { const r = K.recommend(i, ctx()); if (r) out.push(`• ${i.name} (${fmt(r.area)} m²): ${r.layers.map((l) => `${C.PRODUCTS[l.product].name} ${l.parts.join('+')} mm`).join(', ')}${r.U != null ? `, U = ${fmtU(r.U)}` : ''}`); });
     return out.join('\n');
@@ -631,7 +636,7 @@
       date: new Date().toLocaleDateString('cs-CZ'),
       levelLabel: C.LEVELS[state.project.level].label,
       prioLabel: C.PRIORITIES[state.project.priority].label,
-      priceList: C.PRICE_LIST,
+      priceList: C.PRICE_LIST, showPrices: SHOW_PRICES,
       insulation: agg.insulation.map((l) => {
         const p = C.PRODUCTS[l.product];
         if (l.blown) return { name: `${p.name} · ${l.rho} kg/m³`, desc: `Foukaná izolace, aplikuje certifikovaná firma Supafil – ${fmt(l.m2, 0)} m²`, t: l.t, m2: `${fmt(l.kg, 0)} kg`, perPack: fmt(C.BLOWN[l.product].bagKg, 1), unit: 'kg/pytel', packs: l.packs, packsWord: unitWord('pytel', l.packs), price: 'na dotaz', blown: true };

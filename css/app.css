@@ -362,3 +362,5 @@ tr.group td { background: var(--bg); font-weight: 700; font-size: .78rem; color:
 /* Zvýrazněná karta (foukaná izolace) */
 .type-card.featured { border-color: var(--ki-cyan); background: var(--brand-soft); }
 .type-badge { position: absolute; top: -9px; left: .8rem; background: var(--ki-yellow); color: var(--ki-blue-acc); font: 700 .7rem var(--narrow); text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; transform: skewX(-12deg); }
+
+.variant .vprod { display: block; font-weight: 700; color: var(--brand); font-size: .9rem; margin: .15rem 0; }

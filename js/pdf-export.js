@@ -63,18 +63,21 @@
     y += 7;
 
     /* --- souhrnné dlaždice --- */
+    const SP = data.showPrices;
     const tiles = [
       ['Plocha konstrukcí', data.totals.area],
       ['Balení a desek izolace', String(data.totals.packs)],
-      ['Orientační cena vč. DPH', data.totals.priceVat],
     ];
-    if (data.totals.saving) tiles.push(['Roční úspora za teplo', data.totals.saving]);
+    if (SP) tiles.push(['Orientační cena vč. DPH', data.totals.priceVat]);
+    tiles.push(['Konstrukcí', String(data.constructions.length)]);
+    if (data.totals.saving) tiles.splice(tiles.length - 1, 1, ['Roční úspora za teplo', data.totals.saving]);
+    const saveIdx = tiles.findIndex((t) => t[0] === 'Roční úspora za teplo'); const priceIdx = tiles.findIndex((t) => t[0].startsWith('Orientační'));
     const gap = 3; const tw = (CW - gap * (tiles.length - 1)) / tiles.length;
     tiles.forEach(([label, value], i) => {
       const x = M + i * (tw + gap);
       doc.setFillColor(...BG); doc.rect(x, y, tw, 15, 'F');
-      doc.setFillColor(...(i === 3 ? [135, 193, 95] : i === 2 ? CYAN : [207, 215, 217])); doc.rect(x, y, 1.2, 15, 'F');
-      doc.setFont(FONT, 'bold'); doc.setFontSize(12.5); doc.setTextColor(...(i === 3 ? GREEN : INK));
+      doc.setFillColor(...(i === saveIdx ? [135, 193, 95] : i === priceIdx || (!SP && i === 1) ? CYAN : [207, 215, 217])); doc.rect(x, y, 1.2, 15, 'F');
+      doc.setFont(FONT, 'bold'); doc.setFontSize(12.5); doc.setTextColor(...(i === saveIdx ? GREEN : INK));
       doc.text(value, x + 4, y + 7);
       doc.setFont(FONT, 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GREY);
       doc.text(label, x + 4, y + 11.8);
@@ -83,20 +86,20 @@
 
     /* --- tabulka položek --- */
     const body = [];
-    const group = (label) => body.push([{ content: label.toUpperCase(), colSpan: 5, styles: { fillColor: BG, textColor: GREY, fontStyle: 'bold', fontSize: 7.5, cellPadding: { top: 1.6, bottom: 1.6, left: 2.5, right: 2.5 } } }]);
+    const group = (label) => body.push([{ content: label.toUpperCase(), colSpan: SP ? 5 : 4, styles: { fillColor: BG, textColor: GREY, fontStyle: 'bold', fontSize: 7.5, cellPadding: { top: 1.6, bottom: 1.6, left: 2.5, right: 2.5 } } }]);
     group('Izolace');
     data.insulation.forEach((r) => body.push([
       rich(`${r.name} · ${r.t} mm`, r.desc),
       r.blown ? r.m2 : `${r.m2} m²`, r.blown ? `${r.perPack} ${r.unit}` : `${r.perPack} m²/${r.unit}`,
       { content: `${r.packs} ${r.packsWord}`, styles: { fontStyle: 'bold', textColor: BLUE } },
-      r.price,
+      ...(SP ? [r.price] : []),
     ]));
     if (data.accessories.length) {
       group('Vzduchotěsnost a příslušenství');
       data.accessories.forEach((r) => body.push([
         rich(r.name, r.desc), r.need, r.perPack,
         { content: `${r.qty} ${r.qtyWord}`, styles: { fontStyle: 'bold', textColor: BLUE } },
-        r.price,
+        ...(SP ? [r.price] : []),
       ]));
     }
     const foot = [
@@ -106,13 +109,13 @@
     ];
     doc.autoTable({
       startY: y, margin: { left: M, right: M, bottom: 18 },
-      head: [['Produkt', 'Potřeba', 'Balení', 'Koupit', 'Cena bez DPH']],
-      body, foot, showFoot: 'lastPage',
+      head: [SP ? ['Produkt', 'Potřeba', 'Balení', 'Koupit', 'Cena bez DPH'] : ['Produkt', 'Potřeba', 'Balení', 'Koupit']],
+      body, foot: SP ? foot : [], showFoot: 'lastPage',
       theme: 'plain', rowPageBreak: 'avoid', ...richHooks(doc),
       styles: { font: FONT, fontSize: 8.5, textColor: INK, cellPadding: { top: 2.2, bottom: 2.2, left: 2.5, right: 2.5 }, lineColor: LINE, lineWidth: { bottom: 0.2 }, valign: 'middle' },
       headStyles: { font: FONT, fontStyle: 'bold', fontSize: 7.5, textColor: GREY, fillColor: BG },
       footStyles: { font: FONT, fontStyle: 'bold', fillColor: BLUE, textColor: [255, 255, 255], lineWidth: 0 },
-      columnStyles: { 0: { cellWidth: 78 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', cellWidth: 26 } },
+      columnStyles: SP ? { 0: { cellWidth: 78 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', cellWidth: 26 } } : { 0: { cellWidth: 92 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right', cellWidth: 28 } },
       didParseCell: (h) => {
         if (h.section === 'head' && h.column.index > 0) h.cell.styles.halign = 'right';
         if (h.section === 'foot' && h.column.index === 4) h.cell.styles.halign = 'right';
@@ -122,9 +125,9 @@
 
     doc.setFont(FONT, 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GREY);
     const notes = [];
-    if (data.insulation.some((r) => r.blown)) notes.push('Foukanou izolaci Supafil dodává a strojně aplikuje certifikovaná firma – cenu včetně aplikace získáte na www.supafil.cz.');
-    if (data.totals.noPrice) notes.push('Položky „na dotaz“ (foukaná izolace, desky Heraklith / Tektalan) nejsou ve stavebním ceníku ani v součtu.');
-    notes.push(`Ceny dle ${data.priceList}, bez slev. Skutečné ceny u prodejců se mohou lišit. Množství zahrnuje rezervu na prořez a je zaokrouhleno na celá balení.`);
+    if (data.insulation.some((r) => r.blown)) notes.push(SP ? 'Foukanou izolaci Supafil dodává a strojně aplikuje certifikovaná firma – cenu včetně aplikace získáte na www.supafil.cz.' : 'Foukanou izolaci Supafil dodává a strojně aplikuje certifikovaná firma – kontakty na www.supafil.cz.');
+    if (SP && data.totals.noPrice) notes.push('Položky „na dotaz“ (foukaná izolace, desky Heraklith / Tektalan) nejsou ve stavebním ceníku ani v součtu.');
+    notes.push(SP ? `Ceny dle ${data.priceList}, bez slev. Skutečné ceny u prodejců se mohou lišit. Množství zahrnuje rezervu na prořez a je zaokrouhleno na celá balení.` : 'Množství zahrnuje rezervu na prořez a je zaokrouhleno na celá balení. Cenovou nabídku vám připraví prodejce.');
     notes.forEach((n) => { const lines = doc.splitTextToSize(n, CW); doc.text(lines, M, y); y += lines.length * 3.4; });
     y += 4;
 
